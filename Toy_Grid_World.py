@@ -33,38 +33,29 @@ def create_episodes():
     return episodes
 
 
-def optimise(episodes, policy):
-
-
-
-    return episodes, policy
-
-
 def get_features(state, action):
 
-    # features = np.zeros([2*6*4])
-    #
-    # for i in range(3):
-    #     for j in range(7):
-    #         for k in range(5):
-    #
-    #             if state[0] == i and state[1] == j and action == k:
-    #
-    #                 features[2*i + 6*j + k] = 1
-
-
-    # extend feature vector actions as well.
-    # double check it is working
-
-    features = np.zeros(3*7)
+    feature_vector = np.zeros(3*7*4)
 
     for i in range(3):
         for j in range(7):
-            if state[0] == i and state[1] == j:
+            for k in range(4):
 
-                features[i + 3*j] = 1
+                if state[0] == i and state[1] == j and action == k:
 
-    return features
+                    feature_vector[i + 3*j + 3*7*k] = 1
+
+    return feature_vector
+
+
+def optimise(episodes, policy):
+
+    feature_vector = get_features([0, 6], 3)
+
+    # figure out what goes in here
+
+
+    return episodes, policy
 
 
 def main():
@@ -72,14 +63,11 @@ def main():
     episodes = create_episodes()
     policy = np.random.randint(0, 4, [3, 7])
 
-    features = get_features([2, 6], 3)
-    print(features)
+    margin = 10e99
 
-    # margin = 10e99
-    #
-    # while margin > 1:
-    #
-    #     margin, weights = optimise(episodes, policy)
+    while margin > 1:
+
+        margin, weights = optimise(episodes, policy)
 
 
 main()
