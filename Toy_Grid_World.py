@@ -9,26 +9,38 @@ def create_episodes():
     first_under = [[1, 0], 3, [0, 0], 2, [0, 1], 2, [0, 2], 3, [1, 2], 2, [1, 3], 2]
     second_under = [[1, 4], 3, [0, 4], 2, [0, 5], 2, [0, 6], 1]
 
-    episodes = [[first_over, second_over],
-                [first_over, second_over],
-                [first_over, second_over],
-                [first_over, second_over],
-                [first_over, second_over],
-                [first_over, second_under],
-                [first_over, second_under],
-                [first_over, second_under],
-                [first_over, second_under],
-                [first_over, second_under],
-                [first_under, second_over],
-                [first_under, second_over],
-                [first_under, second_over],
-                [first_under, second_over],
-                [first_under, second_over],
-                [first_under, second_under],
-                [first_under, second_under],
-                [first_under, second_under],
-                [first_under, second_under],
-                [first_under, second_under]]
+    episode1 = first_over
+    episode1.extend(second_over)
+
+    episode2 = first_over
+    episode2.extend(second_under)
+
+    episode3 = first_under
+    episode3.extend(second_over)
+
+    episode4 = first_under
+    episode4.extend(second_under)
+
+    episodes = [episode1,
+                episode1,
+                episode1,
+                episode1,
+                episode1,
+                episode2,
+                episode2,
+                episode2,
+                episode2,
+                episode2,
+                episode3,
+                episode3,
+                episode3,
+                episode3,
+                episode3,
+                episode4,
+                episode4,
+                episode4,
+                episode4,
+                episode4]
 
     return episodes
 
@@ -48,26 +60,53 @@ def get_features(state, action):
     return feature_vector
 
 
-def optimise(episodes, policy):
+def get_reward(state, action, weights):
 
-    feature_vector = get_features([0, 6], 3)
+    feature_vector = get_features(state, action)
+    return np.dot(feature_vector, weights)
 
-    # figure out what goes in here
 
+def optimise(episodes, policies, weights):
 
-    return episodes, policy
+    # create array that stores all summed differences
+    # for each policy and each episode
+    # find minimum
+    # use gradient descent to find weights that maximise this minimum
+    # i.e rewrite optimise in terms of just weights
+
+    for policy in policies:
+        for episode in episodes:
+            for i in range(len(episode)//2):
+
+                reward_difference = 0
+
+                state = episode[2*i]
+                action = episode[2*i+1]
+
+                episode_reward = get_reward(state, action, weights)
+                policy_reward = get_reward(state, policy[state[0], state[1]], weights)
+
+                reward_difference += episode_reward - policy_reward
+
+                # calculate difference for all trajectories and all policies
+                # implement gradient descent using weights
 
 
 def main():
 
     episodes = create_episodes()
     policy = np.random.randint(0, 4, [3, 7])
+    policies = [policy]
 
-    margin = 10e99
+    weights = np.random.randint(0, 10, 3 * 7 * 4)
 
-    while margin > 1:
+    optimise(episodes, policies, weights)
 
-        margin, weights = optimise(episodes, policy)
+    # margin = 10e99
+    #
+    # while margin > 1:
+    #
+    #     margin, weights = optimise(episodes, policy)
 
 
 main()
