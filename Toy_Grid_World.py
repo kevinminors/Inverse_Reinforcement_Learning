@@ -5,6 +5,12 @@ np.set_printoptions(linewidth=np.nan)
 
 
 def create_real_episodes():
+    '''
+    Create handmade real episodes for IRL method to learn a
+    reward function for. The episodes exist in a 3x7 grid world.
+    Certain squares are purposely avoided to determine if the
+    IRL algorithm can detect these differences
+    '''
 
     first_over = [[1, 0], 1, [2, 0], 2, [2, 1], 2, [2, 2], 3, [1, 2], 2, [1, 3], 2]
     second_over = [[1, 4], 1, [2, 4], 2, [2, 5], 2, [2, 6], 3, [1, 6], None]
@@ -49,6 +55,9 @@ def create_real_episodes():
 
 
 def generate_random_policy():
+    '''
+    A random handmade policy to begin gradient descent method
+    '''
 
     policy = np.array([[2, 1, 2, 2, 2, 1, 1],
                        [3, 1, 3, 0, 3, 1, None],
@@ -58,7 +67,9 @@ def generate_random_policy():
 
 
 def create_simulated_episodes(policy):
-
+    '''
+    Create list of simulated episodes in GridWorld from the policy
+    '''
     current_state = [1, 0]
     current_action = policy[current_state[0], current_state[1]]
     episode = [current_state, current_action]
@@ -91,7 +102,9 @@ def create_simulated_episodes(policy):
 
 
 def get_feature_vector_k(k):
-
+    '''
+    Return the feature vector with a 1 in the k-th position
+    '''
     feature_vector = np.zeros(3*7)
     feature_vector[k] = 1
 
@@ -99,7 +112,15 @@ def get_feature_vector_k(k):
 
 
 def calculate_policy_k_value(episodes, feature_vector, discount):
+    '''
+    Calculate the approximate policy value V^pi(s), taking the average over
+    all episodes.
 
+    :param episodes:        list of all episodes to calculate value for
+    :param feature_vector:  the function approximator to use as approximation for reward
+    :param discount:        amount to decrease value of future reward
+    :return:                value V^pi(s) as defined in paper
+    '''
     value = 0
 
     for episode in episodes:
@@ -115,6 +136,14 @@ def calculate_policy_k_value(episodes, feature_vector, discount):
 
 
 def calculate_w_k(k, policies, discount):
+    '''
+    Calculate variable v_k
+
+    :param k:           index of the current weight/feature vector
+    :param policies:    list of policies to be optimised over
+    :param discount:    amount to decrease value of future reward
+    :return:            variable for gradient = sum_i V^(pi*)_k - V^(pi_i)_k
+    '''
 
     w_k = 0
 
@@ -132,6 +161,13 @@ def calculate_w_k(k, policies, discount):
 
 
 def calculate_value_difference(w_k):
+    '''
+    Calculate the value difference V^(pi*)(s) - V^(pi_1) to determine if
+    p(x) = x when x >= 0 or p(x) = -2x when x < 0
+
+    :param w_k:     variable for gradient = sum_i V^(pi*)_k - V^(pi_i)_k
+    :return:        value difference
+    '''
     # value difference = sum w_k * weight_k
     # value_difference = 0
     # value_difference += (perfect_policy_k_value - policy_k_value) * weight_k
@@ -140,6 +176,15 @@ def calculate_value_difference(w_k):
 
 
 def calculate_gradient(current_weights, policies, discount):
+    '''
+    Calculate the gradient to update the current weights in the direction
+    of decreasing gradient for gradient descent
+
+    :param current_weights:     the current values for the weights
+    :param policies:            the set of policies currently being optimised over
+    :param discount:            the amount to decrease value of future rewards
+    :return:                    list of gradient components for each weight
+    '''
 
     gradient = []
 
@@ -163,19 +208,18 @@ def calculate_gradient(current_weights, policies, discount):
 
 def main():
     '''
-    Method
+    Main
 
-    Generate value estimate from start state s_0 using episodes aka pi*
-    Generate value estimate from start state s_0 using random pi_1
+    DESCRIPTION
+    Apply inverse reinforcement learning  in https://ai.stanford.edu/~ang/papers/icml00-irl.pdf by Ng
+    to https://www.highd-dataset.com/ dataset
 
-    Calculate term to maximise as a function of weights
-    Gradient ascent to find weights that maximise
-
-    Calculate new policy from new weights
-    Add new policy to list of policies
-    Repeat algorithm
+    PARAMETERS
+     - learning rate:       the step jump for each weight update
+     - max_iterations:      the maximum number of times to iterate gradient descent
+     - precision:           the difference between consecutive weights to stop descending
+     - discount:            amount to decrease confidence in future rewards
     '''
-
     learning_rate = 0.01
     max_iterations = 1
     precision = 0.001
@@ -203,124 +247,4 @@ def main():
 
 
 main()
-
-
-#
-# def get_reward(state, weights):
-#
-#     feature_vector = get_feature_vector(state)
-#     return np.dot(feature_vector, weights)
-#
-#
-#
-# def optimise(weights, policy_values):
-#
-#     pass
-#     #
-#     # # create array that stores all summed differences
-#     # # for each policy and each episode
-#     # # find minimum
-#     # # use gradient descent to find weights that maximise this minimum
-#     # # i.e rewrite optimise in terms of just weights
-#     #
-#     # for policy in policies:
-#     #     for episode in episodes:
-#     #         for i in range(len(episode)//2):
-#     #
-#     #             reward_difference = 0
-#     #
-#     #             state = episode[2*i]
-#     #             action = episode[2*i+1]
-#     #
-#     #             episode_reward = get_reward(state, weights)
-#     #             policy_reward = get_reward(state, weights)
-#     #
-#     #             reward_difference += episode_reward - policy_reward
-#     #
-#     #             # calculate difference for all trajectories and all policies
-#     #             # implement gradient descent using weights
-
-
-# episodes_value = calculate_value_function_for_episodes(feature_vectors, real_episodes, discount, weights)
-# simulated_value = calculate_value_function_for_episodes(feature_vectors, simulated_episodes, discount, weights)
-#
-# optimisation_sum = 0
-#
-# if episodes_value - simulated_value >= 0:
-#
-#     optimisation_sum += episodes_value - simulated_value
-#
-# else:
-#
-#     optimisation_sum -= 2*(episodes_value - simulated_value)
-#
-# print(optimisation_sum)
-
-
-# optimise(weights, policy_values)
-
-# do we need to create actual policies?
-# then calculate value for policy directly from weights
-
-
-# episodes = create_episodes()
-# policy = np.random.randint(0, 4, [3, 7])
-# policies = [policy]
-#
-# weights = np.random.randint(0, 10, 3 * 7 * 4)
-#
-# optimise(episodes, policies, weights)
-
-# margin = 10e99
-#
-# while margin > 1:
-#
-#     margin, weights = optimise(episodes, policy)
-
-#
-# def get_feature_vector(state):
-#
-#     feature_vector = np.zeros(3*7)
-#
-#     for i in range(3):
-#         for j in range(7):
-#
-#             if state[0] == i and state[1] == j:
-#
-#                 feature_vector[i + 3*j] = 1
-#
-#     return feature_vector
-
-# def generate_all_feature_vectors():
-#
-#     feature_vectors = []
-#
-#     for i in range(3):
-#         for j in range(7):
-#
-#             feature_vectors.append(get_feature_vector([i, j]))
-#
-#     return feature_vectors
-
-# def calculate_value_function_for_episodes(feature_vectors, episodes, discount, weights):
-#
-#     value_function = np.zeros([len(feature_vectors)])
-#
-#     for i, feature_vector in enumerate(feature_vectors):
-#
-#         value = 0
-#
-#         for j, episode in enumerate(episodes):
-#
-#             states = episode[::2]
-#
-#             for k, state in enumerate(states):
-#
-#                 value += feature_vector[state[0] + 3*state[1]]*discount**k
-#
-#         value /= len(episodes)
-#
-#         value_function[i] = value
-#
-#     return np.dot(value_function, weights)
 
