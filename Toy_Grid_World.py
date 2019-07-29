@@ -78,7 +78,7 @@ def create_simulated_episodes(policy):
     current_action = policy[current_state[0], current_state[1]]
     episode = [current_state, current_action]
 
-    while current_action is not None:
+    while current_state != [1, 6]:
 
         if current_action == 0:
 
@@ -219,13 +219,498 @@ def calculate_gradient(weights, policies, discount):
     return gradient
 
 
+def convert_state_to_vector_index(state):
+
+    return 7*(2 - state[0]) + state[1]
+
+
+def convert_vector_index_to_state(index):
+
+    state = [0, 0]
+
+    state[1] = index % 7
+    state[0] = 2 - (index - state[1])//7
+
+    return state
+
+
+def step_state_zero_zero(state, action, weights, previous_state):
+
+    index = convert_state_to_vector_index(state)
+
+    if action == 0:
+
+        return state, -100, False
+
+    elif action == 1:
+
+        new_state = [state[0] + 1, state[1]]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 2:
+
+        new_state = [state[0], state[1] + 1]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 3:
+
+        return state, -100, False
+
+
+def step_state_zero_six(state, action, weights, previous_state):
+
+    index = convert_state_to_vector_index(state)
+
+    if action == 0:
+
+        new_state = [state[0], state[1] - 1]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 1:
+
+        return [state[0] + 1, state[1]], 100, True
+
+    elif action == 2:
+
+        return state, -100, False
+
+    elif action == 3:
+
+        return state, -100, False
+
+
+def step_state_zero_middle(state, action, weights, previous_state):
+
+    index = convert_state_to_vector_index(state)
+
+    if action == 0:
+
+        new_state = [state[0], state[1] - 1]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 1:
+
+        new_state = [state[0] + 1, state[1]]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 2:
+
+        new_state = [state[0], state[1] + 1]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 3:
+
+        return state, -100, False
+
+
+def step_state_zero(state, action, weights, previous_state):
+
+    if state[1] == 0:
+
+        return step_state_zero_zero(state, action, weights, previous_state)
+
+    elif state[1] == 6:
+
+        return step_state_zero_six(state, action, weights, previous_state)
+
+    else:
+
+        return step_state_zero_middle(state, action, weights, previous_state)
+
+
+def step_state_one_zero(state, action, weights, previous_state):
+
+    index = convert_state_to_vector_index(state)
+
+    if action == 0:
+
+        return state, -100, False
+
+    elif action == 1:
+
+        new_state = [state[0] + 1, state[1]]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 2:
+
+        new_state = [state[0], state[1] + 1]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 3:
+
+        new_state = [state[0] - 1, state[1]]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+
+def step_state_one_five(state, action, weights, previous_state):
+
+    index = convert_state_to_vector_index(state)
+
+    if action == 0:
+
+        new_state = [state[0], state[1] - 1]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 1:
+
+        new_state = [state[0] + 1, state[1]]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 2:
+
+        return [state[0], state[1] + 1], 100, True
+
+    elif action == 3:
+
+        new_state = [state[0] - 1, state[1]]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+
+def step_state_one_middle(state, action, weights, previous_state):
+
+    index = convert_state_to_vector_index(state)
+
+    if action == 0:
+
+        new_state = [state[0], state[1] - 1]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 1:
+
+        new_state = [state[0] + 1, state[1]]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 2:
+
+        new_state = [state[0], state[1] + 1]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 3:
+
+        new_state = [state[0] - 1, state[1]]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+
+def step_state_one(state, action, weights, previous_state):
+
+    if state[1] == 0:
+
+        return step_state_one_zero(state, action, weights, previous_state)
+
+    elif state[1] == 5:
+
+        return step_state_one_five(state, action, weights, previous_state)
+
+    else:
+
+        return step_state_one_middle(state, action, weights, previous_state)
+
+
+def step_state_two_zero(state, action, weights, previous_state):
+
+    index = convert_state_to_vector_index(state)
+
+    if action == 0:
+
+        return state, -100, False
+
+    elif action == 1:
+
+        return state, -100, False
+
+    elif action == 2:
+
+        new_state = [state[0], state[1] + 1]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 3:
+
+        new_state = [state[0] - 1, state[1]]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+
+def step_state_two_six(state, action, weights, previous_state):
+
+    index = convert_state_to_vector_index(state)
+
+    if action == 0:
+
+        new_state = [state[0], state[1] - 1]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 1:
+
+        return state, -100, False
+
+    elif action == 2:
+
+        return state, -100, False
+
+    elif action == 3:
+
+        return [state[0] - 1, state[1]], 100, True
+
+
+def step_state_two_middle(state, action, weights, previous_state):
+
+    index = convert_state_to_vector_index(state)
+
+    if action == 0:
+
+        new_state = [state[0], state[1] - 1]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 1:
+
+        return state, -100, False
+
+    elif action == 2:
+
+        new_state = [state[0], state[1] + 1]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+    elif action == 3:
+
+        new_state = [state[0] - 1, state[1]]
+
+        if new_state != previous_state:
+            return new_state, weights[index], False
+        else:
+            return new_state, -100, False
+
+
+def step_state_two(state, action, weights, previous_state):
+
+    if state[1] == 0:
+
+        return step_state_two_zero(state, action, weights, previous_state)
+
+    elif state[1] == 6:
+
+        return step_state_two_six(state, action, weights, previous_state)
+
+    else:
+
+        return step_state_two_middle(state, action, weights, previous_state)
+
+
+def step_model(state, action, weights, previous_state):
+
+    if state[0] == 0:
+
+        return step_state_zero(state, action, weights, previous_state)
+
+    elif state[0] == 1:
+
+        return step_state_one(state, action, weights, previous_state)
+
+    elif state[0] == 2:
+
+        return step_state_two(state, action, weights, previous_state)
+
+
 def calculate_maximal_reward_policy(weights):
 
-    # todo start here
-    # may need some serious RL here
-    # to calculate optimal policy from reward function
+    num_of_episodes = 10000
+    policy = np.random.randint(0, 4, [3, 7])
+    action_value_function = np.zeros([3, 7, 4])
+    state_action_counter = np.zeros([3, 7, 4])
+    state_counter = np.zeros([3, 7])
+    lamb = 0.9
 
-    return 0
+    print('Calculating new policy...')
+
+    for i in range(num_of_episodes):
+
+        # todo start here
+        # make variables for rewards and penalties
+        # decrease terminal state reward so more interesting policies are found
+        # instead of 2,2,2,2,2 straight to terminal state
+
+        print('Episodes left:', num_of_episodes - i)
+        # print('{0:.2f}'.format(i / num_of_episodes * 100))
+
+        eligibility_traces = np.zeros([3, 7, 4])
+
+        state = [1, 0]
+        previous_state = [0, 6]
+        action = policy[state[0], state[1]]
+
+        episode = []
+        episode.append(state)
+        episode.append(action)
+
+        terminal_state = False
+
+        while not terminal_state:
+
+            # print('state', state)
+            # print('action', action)
+
+            new_state, reward, terminal_state = step_model(state, action, weights, previous_state)
+            if terminal_state:
+                print(episode)
+                break
+
+            state_counter[state[0], state[1]] += 1
+
+            state_action_pair = state[0], state[1], action
+            state_action_counter[state_action_pair] += 1
+
+            epsilon = 1000 / (state_counter[state[0], state[1]] + 1000)
+            probability = np.random.rand()
+
+            if probability <= epsilon:
+                # pick random action
+                policy[new_state[0], new_state[1]] = np.random.randint(0, 4)
+
+            else:
+                # pick max of action value func
+                policy[new_state[0], new_state[1]] = np.argmax(action_value_function[new_state[0], new_state[1], :])
+
+            new_action = policy[new_state[0], new_state[1]] # np.argmax(action_value_function[state[0], state[1], :])
+            episode.append(new_state)
+            episode.append(new_action)
+            delta = (reward + action_value_function[new_state[0], new_state[1], new_action]
+                     - action_value_function[state_action_pair])
+
+            eligibility_traces[state_action_pair] += 1
+
+            action_value_function[state_action_pair] += (delta * eligibility_traces[state_action_pair]
+                                                         / state_action_counter[state_action_pair])
+            eligibility_traces[state_action_pair] *= lamb
+
+            # for j in range(3):
+            #     for k in range(7):
+            #
+            #         epsilon = 1000 / (state_counter[j, k] + 1000)
+            #         probability = np.random.rand()
+            #
+            #         if probability <= epsilon:
+            #             # pick random action
+            #             policy[j, k] = np.random.randint(0, 4)
+            #
+            #         else:
+            #             # pick max of action value func
+            #             policy[j, k] = np.argmax(action_value_function[j, k, :])
+
+            previous_state = state
+            state = new_state
+            action = new_action
+
+    print('weights', np.resize(weights, [3, 7]))
+    print('policy', policy)
+
+    return policy
+
+
+def calculate_score(weights, policies, discount):
+
+    value = 0
+
+    for policy in policies:
+
+        feature_sum = 0
+
+        for i in range(21):
+
+            feature_sum += weights[i]*calculate_value_function_difference(i, policy, discount)
+
+        if feature_sum >= 0:
+
+            p_value = feature_sum
+
+        else:
+
+            p_value = 2*feature_sum
+
+        value += p_value
+
+    return value
 
 
 def main():
@@ -242,10 +727,10 @@ def main():
      - precision:           the difference between consecutive weights to stop descending
      - discount:            amount to decrease confidence in future rewards
     '''
-    learning_rate = 0.1
+    learning_rate = 0.01
     max_weight_updates = 1000000
-    max_number_of_policies = 100
-    precision = 0.000000001
+    max_number_of_policies = 10
+    precision = 0.01
     discount = 0.9
 
     next_weights = np.random.random([3*7])*2 - 1
@@ -255,25 +740,35 @@ def main():
 
     while len(policies) < max_number_of_policies:
 
+        print('Calculating new weights...')
+
         for i in range(max_weight_updates):
 
             current_weights = next_weights
             gradients = calculate_gradient(current_weights, policies, discount)
             weights_change = [learning_rate*gradient for gradient in gradients]
-            next_weights = current_weights - weights_change
+            next_weights = current_weights + weights_change
 
             next_weights = np.minimum(next_weights, np.ones(len(next_weights)))
             next_weights = np.maximum(next_weights, -1*np.ones(len(next_weights)))
 
+            # current_score = calculate_score(current_weights, policies, discount)
+            # next_score = calculate_score(next_weights, policies, discount)
+            # print('current', current_score, 'next', next_score, 'increasing', next_score > current_score)
+
             step = np.linalg.norm(next_weights - current_weights)
 
-            if abs(step) <= precision:
+            print('Updates left:', max_weight_updates - i, 'Current step size:', step)
+
+            if step <= precision:
+                # print(next_weights)
                 new_policy = calculate_maximal_reward_policy(next_weights)
+                # print(new_policy)
                 policies.append(new_policy)
                 next_weights = np.random.random([3 * 7]) * 2 - 1
                 break
 
-    print(np.resize(next_weights, [3, 7]))
+    print(current_weights)
 
 
 main()
