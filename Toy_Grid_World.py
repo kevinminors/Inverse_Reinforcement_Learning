@@ -102,6 +102,10 @@ def create_simulated_episodes(policy):
         episode.append(current_state)
         episode.append(current_action)
 
+    # print()
+    # print('generated episode', episode)
+    # print()
+
     episodes = [episode for _ in range(20)]
 
     return episodes
@@ -714,7 +718,7 @@ def calculate_score(weights, policies, discount):
 
         else:
 
-            p_value = 2*feature_sum
+            p_value = 1000*feature_sum
 
         value += p_value
 
@@ -737,9 +741,9 @@ def main():
     '''
     learning_rate = 0.1
     max_weight_updates = 1000000
-    max_number_of_policies = 100
-    precision = 0.01
-    discount = 0.9
+    max_number_of_policies = 1000
+    precision = 0.1
+    discount = 1 # 0.9
 
     next_weights = np.random.random([3*7])*2 - 1
 
