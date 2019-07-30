@@ -5,6 +5,7 @@ np.set_printoptions(linewidth=np.nan)
 # remove all hardcoded numbers
 # replace i, j, k by feature_vector_number etc
 # move parameters needed everywhere to global parameters
+# optimised rewards are not changing
 '''
 move from using 
 
@@ -111,9 +112,13 @@ def generate_random_policy():
     A random handmade policy to begin gradient descent method
     '''
 
-    policy = np.array([[2, 1, 2, 2, 2, 1, 1],
-                       [3, 1, 3, 0, 3, 1, None],
-                       [2, 2, 2, 3, 2, 2, 3]])
+    # policy = np.array([[2, 1, 2, 2, 2, 1, 1],
+    #                    [3, 1, 3, 0, 3, 1, None],
+    #                    [2, 2, 2, 3, 2, 2, 3]])
+
+    policy = np.array([[2, 2, 2, 2, 2, 2, 2],
+                       [2, 2, 2, 2, 2, 2, 2],
+                       [2, 2, 2, 2, 2, 2, 2]])
 
     return policy
 
@@ -596,14 +601,14 @@ def step_model(state, action, weights, previous_state):
 
 def calculate_maximal_reward_policy(weights):
 
-    num_of_episodes = 100000
+    num_of_episodes = 10000
     policy = np.random.randint(0, 4, [3, 7])
     action_value_function = np.zeros([3, 7, 4])
     state_action_counter = np.zeros([3, 7, 4])
     state_counter = np.zeros([3, 7])
     lamb = 0.9
 
-    print('Calculating new policy...')
+    # print('Calculating new policy...')
 
     for i in range(num_of_episodes):
 
@@ -612,7 +617,7 @@ def calculate_maximal_reward_policy(weights):
         # decrease terminal state reward so more interesting policies are found
         # instead of 2,2,2,2,2 straight to terminal state
 
-        print('Episodes left:', num_of_episodes - i)
+        # print('Episodes left:', num_of_episodes - i)
         # print('{0:.2f}'.format(i / num_of_episodes * 100))
 
         eligibility_traces = np.zeros([3, 7, 4])
@@ -634,7 +639,7 @@ def calculate_maximal_reward_policy(weights):
 
             new_state, reward, terminal_state = step_model(state, action, weights, previous_state)
             if terminal_state:
-                print(episode)
+                # print(episode)
                 break
 
             state_counter[state[0], state[1]] += 1
@@ -642,7 +647,7 @@ def calculate_maximal_reward_policy(weights):
             state_action_pair = state[0], state[1], action
             state_action_counter[state_action_pair] += 1
 
-            epsilon = 10000 / (state_counter[state[0], state[1]] + 10000)
+            epsilon = 1000 / (state_counter[state[0], state[1]] + 1000)
             probability = np.random.rand()
 
             if probability <= epsilon:
@@ -683,8 +688,10 @@ def calculate_maximal_reward_policy(weights):
             state = new_state
             action = new_action
 
-    print('weights', np.resize(weights, [3, 7]))
-    print('policy', policy)
+    # print('weights', np.resize(weights, [3, 7]))
+    print()
+    print('new policy', policy)
+    print()
 
     return policy
 
@@ -728,9 +735,9 @@ def main():
      - precision:           the difference between consecutive weights to stop descending
      - discount:            amount to decrease confidence in future rewards
     '''
-    learning_rate = 0.01
+    learning_rate = 0.1
     max_weight_updates = 1000000
-    max_number_of_policies = 10
+    max_number_of_policies = 100
     precision = 0.01
     discount = 0.9
 
@@ -739,9 +746,16 @@ def main():
     random_policy = generate_random_policy()
     policies = [random_policy]
 
+    # print()
+    # print(random_policy)
+    # print()
+
     while len(policies) < max_number_of_policies:
 
-        print('Calculating new weights...')
+        # print('Calculating new weights...')
+        print()
+        print('length of policies', len(policies))
+        print()
 
         for i in range(max_weight_updates):
 
@@ -759,17 +773,22 @@ def main():
 
             step = np.linalg.norm(next_weights - current_weights)
 
-            print('Updates left:', max_weight_updates - i, 'Current step size:', step)
+            # print('Updates left:', max_weight_updates - i, 'Current step size:', step)
 
             if step <= precision:
-                print(np.resize(next_weights, [3, 7]))
+                # print()
+                # print('optimised weights', np.resize(next_weights, [3, 7]))
+                # print()
                 new_policy = calculate_maximal_reward_policy(next_weights)
                 # print(new_policy)
                 policies.append(new_policy)
                 next_weights = np.random.random([3 * 7]) * 2 - 1
                 break
 
-    print(current_weights)
+        # print('policies', policies)
+        print()
+        print('optimised rewards', np.resize(current_weights, [3, 7]))
+        print()
 
 
 exit_boundary_reward = -100
