@@ -643,7 +643,7 @@ def calculate_maximal_reward_policy(weights, discount):
         # decrease terminal state reward so more interesting policies are found
         # instead of 2,2,2,2,2 straight to terminal state
 
-        # print('Episodes left:', num_of_episodes - i)
+        print('Episodes left:', num_of_episodes - i)
         # print('{0:.2f}'.format(i / num_of_episodes * 100))
 
         eligibility_traces = np.zeros([3, 7, 4])
@@ -660,12 +660,12 @@ def calculate_maximal_reward_policy(weights, discount):
 
         while not terminal_state:
 
-            print('state', state)
-            print('action', action)
+            # print('state', state)
+            # print('action', action)
 
             new_state, reward, terminal_state = step_model(state, action, weights, previous_state)
             if terminal_state:
-                print(episode)
+                # print(episode)
                 break
 
             state_counter[state[0], state[1]] += 1
@@ -696,10 +696,10 @@ def calculate_maximal_reward_policy(weights, discount):
                                                          / state_action_counter[state_action_pair])
             eligibility_traces[state_action_pair] *= lamb*discount
 
-            print()
-            print('policy')
-            print(policy)
-            print()
+            # print()
+            # print('policy')
+            # print(policy)
+            # print()
 
             # for j in range(3):
             #     for k in range(7):
@@ -721,7 +721,8 @@ def calculate_maximal_reward_policy(weights, discount):
 
     # print('weights', np.resize(weights, [3, 7]))
     print()
-    print('new policy', policy)
+    print('new policy')
+    print(policy)
     print()
 
     return policy
@@ -767,9 +768,9 @@ def main():
      - discount:            amount to decrease confidence in future rewards
     '''
     learning_rate = 0.01
-    max_weight_updates = 1000000
-    max_number_of_policies = 2
-    precision = 0.00001
+    max_weight_updates = 500
+    max_number_of_policies = 10
+    precision = 0.001
     discount = 0.9
 
     next_weights = np.zeros([3*7])
@@ -827,9 +828,11 @@ def main():
         print(np.resize(current_weights, [3, 7]))
         print()
 
+        # todo run code for current values, check if it converges for many policies
 
-exit_boundary_reward = -100
-repeat_previous_state_reward = -2
+
+exit_boundary_reward = -1
+repeat_previous_state_reward = -1
 terminal_state_reward = 0
 
 main()
