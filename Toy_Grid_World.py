@@ -1,38 +1,80 @@
 import numpy as np
+from collections import Counter
 np.set_printoptions(linewidth=np.nan)
 
 
 def convert_state_to_vector_index(state):
+    """
+    Helper function to convert state in Gridworld
+    to an index used for weights and feature vectors.
 
+    :param state: [x, y] location in Gridworld
+    :return: corresponding index for feature/weights vectors
+    """
     return 7 * (2 - state[0]) + state[1]
 
 
-def calculate_gradient(weights, policies, discount):
-    '''
-    Calculate the gradient to update the current weights in the direction
-    of decreasing gradient for gradient descent
+def convert_vector_index_to_state(index):
+    """
+    Helper function to convert vector index used
+    in feature/weight vectors into a state in Gridworld.
 
-    :param weights:     the current values for the weights
+    :param index: index used in feature/weight vectors
+    :return: corresponding [x, y] state in Gridworld
+    """
+    state = [0, 0]
+
+    state[1] = index % 7
+    state[0] = 2 - (index - state[1])//7
+
+    return state
+
+
+def calculate_gradient(weights, policies):
+    """
+    Calculate the direction of the gradient to update the weights
+    in order to find the weights that maximise the sum of the
+    differences between the real episode values and random policy values.
+
+    In particular, the sum we want to find weights for is:
+
+    sum_{i=1}^k p( V^{pi*}(s) - V^{pi_i}(s) )
+
+    where abs(alpha_i) <= 1 for all weights alpha_i
+    and p(x) = x if x >= 0 and p(x) = 2x if x < 0, which
+    is a penalty term for when V^{pi*}(s) < V^{pi_i}(s).
+
+    Full details can be found in section 5 of
+    'Algorithms for Inverse Reinforcement Learning' by Ng and Russel
+    https://ai.stanford.edu/~ang/papers/icml00-irl.pdf.
+
+    :param weights:             the current values for the weights
     :param policies:            the set of policies currently being optimised over
-    :param discount:            the amount to decrease value of future rewards
     :return:                    list of gradient components for each weight
-    '''
+    """
 
     def get_feature_vector(feature_vector_number):
-        '''
-        Return the feature vector with a 1 in the k-th position
-        '''
+        """
+        Helper function to get feature vector that is zero everywhere
+        except a 1 in the given index
+
+        :param feature_vector_number:   index for the 1 in the vector
+        :return:                        feature vector with 1 in that index
+        """
         feature_vector = np.zeros(3 * 7)
         feature_vector[feature_vector_number] = 1
 
         return feature_vector
 
-    def create_simulated_episodes(policy):
-        '''
-        Create list of simulated episodes in GridWorld from the policy
-        '''
+    def create_simulated_episodes(current_policy):
+        """
+        Create simulated episode in GridWorld from the given policy
+
+        :param current_policy:  policy to use to create episode
+        :return:                episode created using given policy
+        """
         current_state = [1, 0]
-        current_action = policy[current_state[0], current_state[1]]
+        current_action = current_policy[current_state[0], current_state[1]]
         episode = [current_state, current_action]
 
         while current_state != [1, 6]:
@@ -53,25 +95,25 @@ def calculate_gradient(weights, policies, discount):
 
                 current_state = [current_state[0] - 1, current_state[1]]
 
-            current_action = policy[current_state[0], current_state[1]]
+            current_action = current_policy[current_state[0], current_state[1]]
             episode.append(current_state)
             episode.append(current_action)
 
-        # print()
-        # print('generated episode', episode)
-        # print()
-
-        episodes = [episode for _ in range(20)]
+        episodes = [episode]
 
         return episodes
 
     def create_real_episodes():
-        '''
-        Create handmade real episodes for IRL method to learn a
-        reward function for. The episodes exist in a 3x7 grid world.
-        Certain squares are purposely avoided to determine if the
-        IRL algorithm can detect these differences
-        '''
+        """
+        Create real episodes for the inverse reinforcement
+        learning to learn from. The episodes exist in a 3x7
+        Gridworld. They begin in [1,0] and end in [1,6]. All
+        four episodes avoid locations [1, 1], [0, 3], [2, 3],
+        and [1, 5]. The goal is for this IRL method to reproduce
+        the fact that certain squares are avoided.
+
+        :return: episodes for IRL method to learn from
+        """
 
         first_over_second_over = [[1, 0], 1, [2, 0], 2, [2, 1], 2, [2, 2], 3, [1, 2], 2, [1, 3], 2,
                                   [1, 4], 1, [2, 4], 2, [2, 5], 2, [2, 6], 3, [1, 6], None]
@@ -86,41 +128,39 @@ def calculate_gradient(weights, policies, discount):
                                     [1, 4], 3, [0, 4], 2, [0, 5], 2, [0, 6], 1, [1, 6], None]
 
         episodes = [first_over_second_over,
-                    first_over_second_over,
-                    first_over_second_over,
-                    first_over_second_over,
-                    first_over_second_over,
-                    first_over_second_under,
-                    first_over_second_under,
-                    first_over_second_under,
-                    first_over_second_under,
                     first_over_second_under,
                     first_under_second_over,
-                    first_under_second_over,
-                    first_under_second_over,
-                    first_under_second_over,
-                    first_under_second_over,
-                    first_under_second_under,
-                    first_under_second_under,
-                    first_under_second_under,
-                    first_under_second_under,
                     first_under_second_under]
 
         return episodes
 
-    def calculate_approximate_reward(episodes, feature_vector, discount):
-        '''
-        Calculate the approximate policy value V^pi(s), taking the average over
-        all episodes.
+    def calculate_approximate_reward(episodes, feature_vector):
+        """
+        Calculate the average empirical return V_i^{pi} for
+        feature vector i and policy pi derived from the given episodes.
+        V_i^{pi} is defined as:
 
-        :param episodes:        list of all episodes to calculate value for
-        :param feature_vector:  the function approximator to use as approximation for reward
-        :param discount:        amount to decrease value of future reward
-        :return:                value V^pi(s) as defined in paper
-        '''
+        V^{pi_i}(s) = sum_{j=0}^{infinity} feature_vector_i(state(j)) * discount^j
+
+        where the sum increments over states in the episode and
+        the power of the discount term.
+
+        We calculate this value for each episode and then take the average
+        over all episodes.
+
+        Full details can be found in section 5 of
+        'Algorithms for Inverse Reinforcement Learning' by Ng and Russel
+        https://ai.stanford.edu/~ang/papers/icml00-irl.pdf.
+
+        :param episodes:        list of episodes to grab states from
+        :param feature_vector:  vector to use as approximation for reward function
+        :return:                mean value of V_i^{pi} for all episodes
+        """
         episode_values = np.zeros(len(episodes))
 
         for i, episode in enumerate(episodes):
+
+            # todo rewrite current_ep and episode values using list comprehension
 
             current_episode_value = 0
             states = episode[::2]
@@ -134,36 +174,34 @@ def calculate_gradient(weights, policies, discount):
 
         return mean_episode_value
 
-    def calculate_p_gradient(weights, policy, discount):
+    def calculate_p_gradient(current_policy):
+        """
+        Taking the partial derivative of the sum:
 
+        sum_{i=1}^k p( V^{pi*}(s) - V^{pi_i}(s) )
+
+        with respect to each weight alpha_n results
+        in the following sum:
+
+        sum_{i=1}^k p'( V^{pi*}(s) - V^{pi_i}(s) )
+                        * ( V_n^{pi*}(s) - V_n^{pi_i}(s) )
+
+        This method calculates p'( V^{pi*}(s) - V^{pi_i}(s) ).
+
+        :param current_policy:      Policy used to compare against expert episodes
+        :return:                    Value of p' in gradient calculation
+        """
         sum_product = np.zeros(21)
 
         real_episodes = create_real_episodes()
 
         for feature_vector_number in range(21):
+
             feature_vector = get_feature_vector(feature_vector_number)
-            perfect_policy_weight_value = calculate_approximate_reward(real_episodes, feature_vector, discount)
+            perfect_policy_weight_value = calculate_approximate_reward(real_episodes, feature_vector)
 
-            # print()
-            # print('real episode')
-            # print(real_episodes[0])
-            # print(real_episodes[5])
-            # print(real_episodes[10])
-            # print(real_episodes[15])
-            # print(convert_vector_index_to_state(feature_vector_number))
-            # print('weight value')
-            # print(perfect_policy_weight_value)
-            # print()
-
-            simulated_episodes = create_simulated_episodes(policy)
-            policy_weight_value = calculate_approximate_reward(simulated_episodes, feature_vector, discount)
-
-            # print()
-            # print('simulated episode')
-            # print(simulated_episodes)
-            # print(convert_vector_index_to_state(feature_vector_number))
-            # print(policy_weight_value)
-            # print()
+            simulated_episodes = create_simulated_episodes(current_policy)
+            policy_weight_value = calculate_approximate_reward(simulated_episodes, feature_vector)
 
             sum_product[feature_vector_number] = weights[feature_vector_number] * (perfect_policy_weight_value
                                                                                    - policy_weight_value)
@@ -171,20 +209,38 @@ def calculate_gradient(weights, policies, discount):
         weight_sum = sum(sum_product)
 
         if weight_sum >= 0:
-            return 1
+            return p_value_reward
         else:
-            return 10000  # 2
+            return p_value_penalty
 
-    def calculate_value_function_difference(feature_vector_number, policy, discount):
+    def calculate_value_function_difference(feature_vector_number, current_policy):
+        """
+        Taking the partial derivative of the sum:
 
+        sum_{i=1}^k p( V^{pi*}(s) - V^{pi_i}(s) )
+
+        with respect to each weight alpha_n results
+        in the following sum:
+
+        sum_{i=1}^k p'( V^{pi*}(s) - V^{pi_i}(s) )
+                        * ( V_n^{pi*}(s) - V_n^{pi_i}(s) )
+
+        This method calculates V_n^{pi*}(s) - V_n^{pi_i}(s).
+
+        :param feature_vector_number:   Index to use to generate feature vector
+        :param current_policy:          Policy used to compare against expert episodes
+        :return:                        Value of difference between policy values
+        """
         feature_vector = get_feature_vector(feature_vector_number)
         real_episodes = create_real_episodes()
-        perfect_policy_weight_value = calculate_approximate_reward(real_episodes, feature_vector, discount)
+        perfect_policy_weight_value = calculate_approximate_reward(real_episodes, feature_vector)
 
-        simulated_episodes = create_simulated_episodes(policy)
-        policy_weight_value = calculate_approximate_reward(simulated_episodes, feature_vector, discount)
+        simulated_episodes = create_simulated_episodes(current_policy)
+        policy_weight_value = calculate_approximate_reward(simulated_episodes, feature_vector)
 
         return perfect_policy_weight_value - policy_weight_value
+
+    # todo use list comprehensions here
 
     gradient = []
 
@@ -194,17 +250,8 @@ def calculate_gradient(weights, policies, discount):
 
         for policy in policies:
 
-            p_gradient = calculate_p_gradient(weights, policy, discount)
-            value_function_difference = calculate_value_function_difference(j, policy, discount)
-
-            # if p_gradient > 1:
-            #
-            #     print()
-            #     print('p gradient')
-            #     print(p_gradient)
-            #     print('value func diff')
-            #     print(value_function_difference)
-            #     print()
+            p_gradient = calculate_p_gradient(policy)
+            value_function_difference = calculate_value_function_difference(j, policy)
 
             weight_gradient += p_gradient*value_function_difference
 
@@ -214,10 +261,33 @@ def calculate_gradient(weights, policies, discount):
 
 
 def step_model(state, action, weights, previous_state):
+    """
+    Step through the model given a state and an action.
+    Return the new state, immediate reward, and whether or
+    not it is a terminal state.
 
-    def step_state_zero(state, action, weights, previous_state):
+    If the agent moves off Gridworld or back to the previous
+    state, there is a negative reward.
 
-        def step_state_zero_zero(state, action, weights, previous_state):
+    Sub methods filter through different values for each state
+    element and then consider the appropriate action and reward.
+
+    Action = 0 (move left)
+    Action = 1 (move up)
+    Action = 2 (move right)
+    Action = 3 (move down)
+
+    :param state:           Current state of the agent
+    :param action:          Current action the agent takes
+    :param weights:         Weights that approximate rewards for various actions
+    :param previous_state:  Previous state of the agent
+    :return:                New state, immediate reward, and if new state is a terminal state
+    """
+    def step_state_zero():
+
+        # todo could move index and previous state check to top
+
+        def step_state_zero_zero():
 
             index = convert_state_to_vector_index(state)
 
@@ -247,7 +317,7 @@ def step_model(state, action, weights, previous_state):
 
                 return state, exit_boundary_reward, False
 
-        def step_state_zero_six(state, action, weights, previous_state):
+        def step_state_zero_six():
 
             index = convert_state_to_vector_index(state)
 
@@ -272,7 +342,7 @@ def step_model(state, action, weights, previous_state):
 
                 return state, exit_boundary_reward, False
 
-        def step_state_zero_middle(state, action, weights, previous_state):
+        def step_state_zero_middle():
 
             index = convert_state_to_vector_index(state)
 
@@ -309,19 +379,19 @@ def step_model(state, action, weights, previous_state):
 
         if state[1] == 0:
 
-            return step_state_zero_zero(state, action, weights, previous_state)
+            return step_state_zero_zero()
 
         elif state[1] == 6:
 
-            return step_state_zero_six(state, action, weights, previous_state)
+            return step_state_zero_six()
 
         else:
 
-            return step_state_zero_middle(state, action, weights, previous_state)
+            return step_state_zero_middle()
 
-    def step_state_one(state, action, weights, previous_state):
+    def step_state_one():
 
-        def step_state_one_zero(state, action, weights, previous_state):
+        def step_state_one_zero():
 
             index = convert_state_to_vector_index(state)
 
@@ -356,7 +426,7 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, repeat_previous_state_reward, False
 
-        def step_state_one_five(state, action, weights, previous_state):
+        def step_state_one_five():
 
             index = convert_state_to_vector_index(state)
 
@@ -391,7 +461,7 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, repeat_previous_state_reward, False
 
-        def step_state_one_middle(state, action, weights, previous_state):
+        def step_state_one_middle():
 
             index = convert_state_to_vector_index(state)
 
@@ -433,19 +503,19 @@ def step_model(state, action, weights, previous_state):
 
         if state[1] == 0:
 
-            return step_state_one_zero(state, action, weights, previous_state)
+            return step_state_one_zero()
 
         elif state[1] == 5:
 
-            return step_state_one_five(state, action, weights, previous_state)
+            return step_state_one_five()
 
         else:
 
-            return step_state_one_middle(state, action, weights, previous_state)
+            return step_state_one_middle()
 
-    def step_state_two(state, action, weights, previous_state):
+    def step_state_two():
 
-        def step_state_two_zero(state, action, weights, previous_state):
+        def step_state_two_zero():
 
             index = convert_state_to_vector_index(state)
 
@@ -475,7 +545,7 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, repeat_previous_state_reward, False
 
-        def step_state_two_six(state, action, weights, previous_state):
+        def step_state_two_six():
 
             index = convert_state_to_vector_index(state)
 
@@ -500,7 +570,7 @@ def step_model(state, action, weights, previous_state):
 
                 return [state[0] - 1, state[1]], terminal_state_reward, True
 
-        def step_state_two_middle(state, action, weights, previous_state):
+        def step_state_two_middle():
 
             index = convert_state_to_vector_index(state)
 
@@ -537,44 +607,41 @@ def step_model(state, action, weights, previous_state):
 
         if state[1] == 0:
 
-            return step_state_two_zero(state, action, weights, previous_state)
+            return step_state_two_zero()
 
         elif state[1] == 6:
 
-            return step_state_two_six(state, action, weights, previous_state)
+            return step_state_two_six()
 
         else:
 
-            return step_state_two_middle(state, action, weights, previous_state)
+            return step_state_two_middle()
 
     if state[0] == 0:
 
-        return step_state_zero(state, action, weights, previous_state)
+        return step_state_zero()
 
     elif state[0] == 1:
 
-        return step_state_one(state, action, weights, previous_state)
+        return step_state_one()
 
     elif state[0] == 2:
 
-        return step_state_two(state, action, weights, previous_state)
+        return step_state_two()
 
 
-def calculate_maximal_reward_policy(weights, discount):
+def calculate_maximal_reward_policy(weights):
+    """
 
-    num_of_episodes = 10000
+    :param weights:
+    :return:
+    """
     policy = np.random.randint(0, 4, [3, 7])
     action_value_function = np.zeros([3, 7, 4])
     state_action_counter = np.zeros([3, 7, 4])
     state_counter = np.zeros([3, 7])
-    lamb = 0.9
 
-    print('Calculating new policy...')
-
-    for i in range(num_of_episodes):
-
-        # print('Episodes left:', num_of_episodes - i)
-        # print('{0:.2f}'.format(i / num_of_episodes * 100))
+    for i in range(num_of_policy_episodes):
 
         eligibility_traces = np.zeros([3, 7, 4])
 
@@ -582,20 +649,19 @@ def calculate_maximal_reward_policy(weights, discount):
         previous_state = [0, 6]
         action = policy[state[0], state[1]]
 
-        episode = []
+        episode = list()
         episode.append(state)
         episode.append(action)
+
+        # todo there has to be a better way to do the following logic
 
         terminal_state = False
 
         while not terminal_state:
 
-            # print('state', state)
-            # print('action', action)
-
             new_state, reward, terminal_state = step_model(state, action, weights, previous_state)
+
             if terminal_state:
-                # print(episode)
                 break
 
             state_counter[state[0], state[1]] += 1
@@ -603,18 +669,16 @@ def calculate_maximal_reward_policy(weights, discount):
             state_action_pair = state[0], state[1], action
             state_action_counter[state_action_pair] += 1
 
-            epsilon = 1000 / (state_counter[state[0], state[1]] + 1000)
+            epsilon = epsilon_ratio_value / (state_counter[state[0], state[1]] + epsilon_ratio_value)
             probability = np.random.rand()
 
             if probability <= epsilon:
-                # pick random action
                 policy[new_state[0], new_state[1]] = np.random.randint(0, 4)
 
             else:
-                # pick max of action value func
                 policy[new_state[0], new_state[1]] = np.argmax(action_value_function[new_state[0], new_state[1], :])
 
-            new_action = policy[new_state[0], new_state[1]] # np.argmax(action_value_function[state[0], state[1], :])
+            new_action = policy[new_state[0], new_state[1]]
             episode.append(new_state)
             episode.append(new_action)
             delta = (reward + action_value_function[new_state[0], new_state[1], new_action]
@@ -624,42 +688,17 @@ def calculate_maximal_reward_policy(weights, discount):
 
             action_value_function[state_action_pair] += (delta * eligibility_traces[state_action_pair]
                                                          / state_action_counter[state_action_pair])
-            eligibility_traces[state_action_pair] *= lamb*discount
-
-            print()
-            print('policy')
-            print(policy)
-            print()
-
-            # for j in range(3):
-            #     for k in range(7):
-            #
-            #         epsilon = 1000 / (state_counter[j, k] + 1000)
-            #         probability = np.random.rand()
-            #
-            #         if probability <= epsilon:
-            #             # pick random action
-            #             policy[j, k] = np.random.randint(0, 4)
-            #
-            #         else:
-            #             # pick max of action value func
-            #             policy[j, k] = np.argmax(action_value_function[j, k, :])
+            eligibility_traces[state_action_pair] *= lambda_value*discount
 
             previous_state = state
             state = new_state
             action = new_action
 
-    # print('weights', np.resize(weights, [3, 7]))
-    print()
-    print('new policy')
-    print(policy)
-    print()
-
     return policy
 
 
 def main():
-    '''
+    """
     Main
 
     DESCRIPTION
@@ -671,104 +710,84 @@ def main():
      - max_iterations:      the maximum number of times to iterate gradient descent
      - precision:           the difference between consecutive weights to stop descending
      - discount:            amount to decrease confidence in future rewards
-    '''
+    """
 
     def generate_random_policy():
-        '''
+        """
         A random handmade policy to begin gradient descent method
-        '''
-
-        # policy = np.array([[2, 1, 2, 2, 2, 1, 1],
-        #                    [3, 1, 3, 0, 3, 1, None],
-        #                    [2, 2, 2, 3, 2, 2, 3]])
-
+        """
         policy = np.array([[2, 2, 2, 2, 2, 2, 2],
                            [2, 2, 2, 2, 2, 2, 2],
                            [2, 2, 2, 2, 2, 2, 2]])
 
         return policy
 
-    learning_rate = 0.1
-    max_weight_updates = 50
-    max_number_of_policies = 10
-    precision = 0.001
-    discount = 0.9
-
-    next_weights = np.zeros([3*7])
-
     random_policy = generate_random_policy()
     policies = [random_policy]
-
-    # print()
-    # print(random_policy)
-    # print()
+    rewards = []
 
     while len(policies) < max_number_of_policies:
 
-        print('Calculating new weights...')
-        # print()
-        # print('length of policies', len(policies))
-        # print()
+        print('Progress:', len(policies)/max_number_of_policies*100, '%')
+
+        next_weights = np.zeros([3*7])
+        current_weights = np.zeros([3*7])
+        policy_appended = False
 
         for i in range(max_weight_updates):
 
-            policy_appended = False
             current_weights = next_weights
-            gradients = calculate_gradient(current_weights, policies, discount)
+            gradients = calculate_gradient(current_weights, policies)
             weights_change = [learning_rate*gradient for gradient in gradients]
             next_weights = current_weights + weights_change
 
             next_weights = np.minimum(next_weights, np.ones(len(next_weights)))
             next_weights = np.maximum(next_weights, -1*np.ones(len(next_weights)))
 
-            # current_score = calculate_score(current_weights, policies, discount)
-            # next_score = calculate_score(next_weights, policies, discount)
-            # print('current', current_score, 'next', next_score, 'increasing', next_score > current_score)
-
             step = np.linalg.norm(next_weights - current_weights)
 
-            # print('Updates left:', max_weight_updates - i, 'Current step size:', step)
-            # print()
-            # print('optimised weights')
-            # print(np.resize(next_weights, [3, 7]))
-            # print()
-            # print()
-            # print('weight changes')
-            # print(np.resize(weights_change, [3, 7]))
-            # print()
-
             if step <= precision:
-                new_policy = calculate_maximal_reward_policy(next_weights, discount)
-                # print(new_policy)
+                new_policy = calculate_maximal_reward_policy(next_weights)
+                rewards.append(str(np.resize(next_weights, [3, 7])))
                 policies.append(new_policy)
                 policy_appended = True
-                next_weights = np.zeros([3*7])
                 break
 
         if not policy_appended:
+
             probability = np.random.rand()
 
             if probability >= 0.5:
-                new_policy = calculate_maximal_reward_policy(next_weights, discount)
-                print()
-                print('optimised rewards')
-                print(np.resize(next_weights, [3, 7]))
-                print()
+
+                new_policy = calculate_maximal_reward_policy(next_weights)
+                rewards.append(str(np.resize(next_weights, [3, 7])))
+
             else:
-                new_policy = calculate_maximal_reward_policy(current_weights, discount)
-                print()
-                print('optimised rewards')
-                print(np.resize(current_weights, [3, 7]))
-                print()
+
+                new_policy = calculate_maximal_reward_policy(current_weights)
+                rewards.append(str(np.resize(current_weights, [3, 7])))
 
             policies.append(new_policy)
-            next_weights = np.zeros([3 * 7])
 
-        # print('policies', policies)
+    print(Counter(rewards).most_common(4))
 
 
+learning_rate = 0.1
+max_weight_updates = 50
+max_number_of_policies = 100
+precision = 0.001
+discount = 1
 exit_boundary_reward = -1
 repeat_previous_state_reward = -1
 terminal_state_reward = 1
+p_value_reward = 1
+p_value_penalty = 2  # 10000
+num_of_policy_episodes = 10000
+lambda_value = 0.9
+epsilon_ratio_value = 1000  # should be less than half of num_of_policy_episodes
+
+# todo remove all hardcoded numbers
+# todo make parameters needed everywhere gloabal
+# todo use list comprehensions to make code faster
 
 main()
