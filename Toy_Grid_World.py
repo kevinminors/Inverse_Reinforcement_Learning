@@ -767,7 +767,7 @@ def main():
      - precision:           the difference between consecutive weights to stop descending
      - discount:            amount to decrease confidence in future rewards
     '''
-    learning_rate = 0.01
+    learning_rate = 0.1
     max_weight_updates = 500
     max_number_of_policies = 10
     precision = 0.001
@@ -806,14 +806,14 @@ def main():
             step = np.linalg.norm(next_weights - current_weights)
 
             print('Updates left:', max_weight_updates - i, 'Current step size:', step)
-            # print()
-            # print('optimised weights')
-            # print(np.resize(next_weights, [3, 7]))
-            # print()
-            # print()
-            # print('weight changes')
-            # print(np.resize(weights_change, [3, 7]))
-            # print()
+            print()
+            print('optimised weights')
+            print(np.resize(next_weights, [3, 7]))
+            print()
+            print()
+            print('weight changes')
+            print(np.resize(weights_change, [3, 7]))
+            print()
 
             if step <= precision:
                 new_policy = calculate_maximal_reward_policy(next_weights, discount)
@@ -828,7 +828,8 @@ def main():
         print(np.resize(current_weights, [3, 7]))
         print()
 
-        # todo run code for current values, check if it converges for many policies
+        # todo create check for when weights dont converge
+        # if nax number is exceeded, just use current weights
 
 
 exit_boundary_reward = -1
