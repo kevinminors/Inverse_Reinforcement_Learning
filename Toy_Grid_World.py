@@ -1,26 +1,6 @@
 import numpy as np
 np.set_printoptions(linewidth=np.nan)
 
-# move small submethods into the methods that call them
-# remove all hardcoded numbers
-# replace i, j, k by feature_vector_number etc
-# move parameters needed everywhere to global parameters
-# optimised rewards are not changing
-'''
-move from using 
-
-value = 0
-loop
-    value += something
-
-to using 
-
-loop
-value[j] = something
-
-to using list comphrehension and then summing the list
-'''
-
 
 def convert_state_to_vector_index(state):
 
@@ -678,31 +658,6 @@ def calculate_maximal_reward_policy(weights, discount):
     return policy
 
 
-# def calculate_score(weights, policies, discount):
-#
-#     value = 0
-#
-#     for policy in policies:
-#
-#         feature_sum = 0
-#
-#         for i in range(21):
-#
-#             feature_sum += weights[i]*calculate_value_function_difference(i, policy, discount)
-#
-#         if feature_sum >= 0:
-#
-#             p_value = feature_sum
-#
-#         else:
-#
-#             p_value = 2*feature_sum
-#
-#         value += p_value
-#
-#     return value
-
-
 def main():
     '''
     Main
@@ -814,6 +769,6 @@ def main():
 
 exit_boundary_reward = -1
 repeat_previous_state_reward = -1
-terminal_state_reward = 
+terminal_state_reward = 1
 
 main()
