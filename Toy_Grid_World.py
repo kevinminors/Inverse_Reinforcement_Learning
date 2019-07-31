@@ -166,7 +166,7 @@ def calculate_gradient(weights, policies):
             states = episode[::2]
 
             for k, state in enumerate(states):
-                current_episode_value += feature_vector[convert_state_to_vector_index(state)] * discount ** k
+                current_episode_value += feature_vector[convert_state_to_vector_index(state)] * REWARD_DISCOUNT_FACTOR ** k
 
             episode_values[i] = current_episode_value
 
@@ -209,9 +209,9 @@ def calculate_gradient(weights, policies):
         weight_sum = sum(sum_product)
 
         if weight_sum >= 0:
-            return p_value_reward
+            return P_FUNCTION_REWARD
         else:
-            return p_value_penalty
+            return P_FUNCTION_PENALTY
 
     def calculate_value_function_difference(feature_vector_number, current_policy):
         """
@@ -293,7 +293,7 @@ def step_model(state, action, weights, previous_state):
 
             if action == 0:
 
-                return state, exit_boundary_reward, False
+                return state, EXIT_BOUNDARY_REWARD, False
 
             elif action == 1:
 
@@ -302,7 +302,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 2:
 
@@ -311,11 +311,11 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 3:
 
-                return state, exit_boundary_reward, False
+                return state, EXIT_BOUNDARY_REWARD, False
 
         def step_state_zero_six():
 
@@ -328,19 +328,19 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 1:
 
-                return [state[0] + 1, state[1]], terminal_state_reward, True
+                return [state[0] + 1, state[1]], TERMINAL_STATE_REWARD, True
 
             elif action == 2:
 
-                return state, exit_boundary_reward, False
+                return state, EXIT_BOUNDARY_REWARD, False
 
             elif action == 3:
 
-                return state, exit_boundary_reward, False
+                return state, EXIT_BOUNDARY_REWARD, False
 
         def step_state_zero_middle():
 
@@ -353,7 +353,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 1:
 
@@ -362,7 +362,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 2:
 
@@ -371,11 +371,11 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 3:
 
-                return state, exit_boundary_reward, False
+                return state, EXIT_BOUNDARY_REWARD, False
 
         if state[1] == 0:
 
@@ -397,7 +397,7 @@ def step_model(state, action, weights, previous_state):
 
             if action == 0:
 
-                return state, exit_boundary_reward, False
+                return state, EXIT_BOUNDARY_REWARD, False
 
             elif action == 1:
 
@@ -406,7 +406,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 2:
 
@@ -415,7 +415,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 3:
 
@@ -424,7 +424,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
         def step_state_one_five():
 
@@ -437,7 +437,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 1:
 
@@ -446,11 +446,11 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 2:
 
-                return [state[0], state[1] + 1], terminal_state_reward, True
+                return [state[0], state[1] + 1], TERMINAL_STATE_REWARD, True
 
             elif action == 3:
 
@@ -459,7 +459,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
         def step_state_one_middle():
 
@@ -472,7 +472,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 1:
 
@@ -481,7 +481,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 2:
 
@@ -490,7 +490,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 3:
 
@@ -499,7 +499,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
         if state[1] == 0:
 
@@ -521,11 +521,11 @@ def step_model(state, action, weights, previous_state):
 
             if action == 0:
 
-                return state, exit_boundary_reward, False
+                return state, EXIT_BOUNDARY_REWARD, False
 
             elif action == 1:
 
-                return state, exit_boundary_reward, False
+                return state, EXIT_BOUNDARY_REWARD, False
 
             elif action == 2:
 
@@ -534,7 +534,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 3:
 
@@ -543,7 +543,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
         def step_state_two_six():
 
@@ -556,19 +556,19 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 1:
 
-                return state, exit_boundary_reward, False
+                return state, EXIT_BOUNDARY_REWARD, False
 
             elif action == 2:
 
-                return state, exit_boundary_reward, False
+                return state, EXIT_BOUNDARY_REWARD, False
 
             elif action == 3:
 
-                return [state[0] - 1, state[1]], terminal_state_reward, True
+                return [state[0] - 1, state[1]], TERMINAL_STATE_REWARD, True
 
         def step_state_two_middle():
 
@@ -581,11 +581,11 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 1:
 
-                return state, exit_boundary_reward, False
+                return state, EXIT_BOUNDARY_REWARD, False
 
             elif action == 2:
 
@@ -594,7 +594,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
             elif action == 3:
 
@@ -603,7 +603,7 @@ def step_model(state, action, weights, previous_state):
                 if new_state != previous_state:
                     return new_state, weights[index], False
                 else:
-                    return new_state, repeat_previous_state_reward, False
+                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
         if state[1] == 0:
 
@@ -641,7 +641,7 @@ def calculate_maximal_reward_policy(weights):
     state_action_counter = np.zeros([3, 7, 4])
     state_counter = np.zeros([3, 7])
 
-    for i in range(num_of_policy_episodes):
+    for i in range(MAXIMUM_NUMBER_OF_POLICY_EPISODES):
 
         eligibility_traces = np.zeros([3, 7, 4])
 
@@ -669,7 +669,7 @@ def calculate_maximal_reward_policy(weights):
             state_action_pair = state[0], state[1], action
             state_action_counter[state_action_pair] += 1
 
-            epsilon = epsilon_ratio_value / (state_counter[state[0], state[1]] + epsilon_ratio_value)
+            epsilon = EPSILON_RATIO_VALUE / (state_counter[state[0], state[1]] + EPSILON_RATIO_VALUE)
             probability = np.random.rand()
 
             if probability <= epsilon:
@@ -688,7 +688,7 @@ def calculate_maximal_reward_policy(weights):
 
             action_value_function[state_action_pair] += (delta * eligibility_traces[state_action_pair]
                                                          / state_action_counter[state_action_pair])
-            eligibility_traces[state_action_pair] *= lambda_value*discount
+            eligibility_traces[state_action_pair] *= LAMBDA * REWARD_DISCOUNT_FACTOR
 
             previous_state = state
             state = new_state
@@ -726,19 +726,19 @@ def main():
     policies = [random_policy]
     rewards = []
 
-    while len(policies) < max_number_of_policies:
+    while len(policies) < MAXIMUM_NUMBER_OF_POLICIES:
 
-        print('Progress:', len(policies)/max_number_of_policies*100, '%')
+        print('Progress:', len(policies) / MAXIMUM_NUMBER_OF_POLICIES * 100, '%')
 
         next_weights = np.zeros([3*7])
         current_weights = np.zeros([3*7])
         policy_appended = False
 
-        for i in range(max_weight_updates):
+        for i in range(MAXIMUM_WEIGHT_UPDATES):
 
             current_weights = next_weights
             gradients = calculate_gradient(current_weights, policies)
-            weights_change = [learning_rate*gradient for gradient in gradients]
+            weights_change = [LEARNING_RATE * gradient for gradient in gradients]
             next_weights = current_weights + weights_change
 
             next_weights = np.minimum(next_weights, np.ones(len(next_weights)))
@@ -746,7 +746,7 @@ def main():
 
             step = np.linalg.norm(next_weights - current_weights)
 
-            if step <= precision:
+            if step <= REQUIRED_STEP_PRECISION:
                 new_policy = calculate_maximal_reward_policy(next_weights)
                 rewards.append(str(np.resize(next_weights, [3, 7])))
                 policies.append(new_policy)
@@ -772,22 +772,27 @@ def main():
     print(Counter(rewards).most_common(4))
 
 
-learning_rate = 0.1
-max_weight_updates = 50
-max_number_of_policies = 100
-precision = 0.001
-discount = 1
-exit_boundary_reward = -1
-repeat_previous_state_reward = -1
-terminal_state_reward = 1
-p_value_reward = 1
-p_value_penalty = 2  # 10000
-num_of_policy_episodes = 10000
-lambda_value = 0.9
-epsilon_ratio_value = 1000  # should be less than half of num_of_policy_episodes
+LEARNING_RATE = 0.1
+MAXIMUM_WEIGHT_UPDATES = 50
+MAXIMUM_NUMBER_OF_POLICIES = 3
+REQUIRED_STEP_PRECISION = 0.001
+
+REWARD_DISCOUNT_FACTOR = 1
+EXIT_BOUNDARY_REWARD = -1
+REPEAT_PREVIOUS_STATE_REWARD = -1  # do we really need this?
+TERMINAL_STATE_REWARD = 1
+
+P_FUNCTION_REWARD = 1
+P_FUNCTION_PENALTY = 2  # 10000
+
+MAXIMUM_NUMBER_OF_POLICY_EPISODES = 10000
+LAMBDA = 0.9
+EPSILON_RATIO_VALUE = 1000  # should be less than half of num_of_policy_episodes
 
 # todo remove all hardcoded numbers
-# todo make parameters needed everywhere gloabal
+# todo make parameters needed everywhere global
 # todo use list comprehensions to make code faster
+# todo try IRL with one unique real episode
+# todo figure out good way to report final rewards
 
 main()
