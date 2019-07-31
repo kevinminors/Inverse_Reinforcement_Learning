@@ -132,6 +132,9 @@ def calculate_gradient(weights, policies):
                     first_under_second_over,
                     first_under_second_under]
 
+        # episodes = [first_over_second_over,
+        #             first_over_second_under]
+
         return episodes
 
     def calculate_approximate_reward(episodes, feature_vector):
@@ -654,7 +657,8 @@ def calculate_maximal_reward_policy(weights):
         episode.append(action)
 
         # todo there has to be a better way to do the following logic
-
+        # todo introduce max limit on how long policy can look for terminal state
+        # todo introduce check for when policy gets caught in a loop
         terminal_state = False
 
         while not terminal_state:
@@ -685,6 +689,10 @@ def calculate_maximal_reward_policy(weights):
                      - action_value_function[state_action_pair])
 
             eligibility_traces[state_action_pair] += 1
+
+            print()
+            print(policy)
+            print()
 
             action_value_function[state_action_pair] += (delta * eligibility_traces[state_action_pair]
                                                          / state_action_counter[state_action_pair])
@@ -747,6 +755,7 @@ def main():
             step = np.linalg.norm(next_weights - current_weights)
 
             if step <= REQUIRED_STEP_PRECISION:
+
                 new_policy = calculate_maximal_reward_policy(next_weights)
                 rewards.append(str(np.resize(next_weights, [3, 7])))
                 policies.append(new_policy)
@@ -769,17 +778,21 @@ def main():
 
             policies.append(new_policy)
 
-    print(Counter(rewards).most_common(4))
+    print()
+    print('Final Reward Function')
+    print(np.resize(next_weights, [3, 7]))
+    # print(rewards)
+    # print(Counter(rewards).most_common(4))
 
 
 LEARNING_RATE = 0.1
 MAXIMUM_WEIGHT_UPDATES = 50
-MAXIMUM_NUMBER_OF_POLICIES = 3
+MAXIMUM_NUMBER_OF_POLICIES = 10
 REQUIRED_STEP_PRECISION = 0.001
 
 REWARD_DISCOUNT_FACTOR = 1
 EXIT_BOUNDARY_REWARD = -1
-REPEAT_PREVIOUS_STATE_REWARD = -1  # do we really need this?
+REPEAT_PREVIOUS_STATE_REWARD = -1
 TERMINAL_STATE_REWARD = 1
 
 P_FUNCTION_REWARD = 1
@@ -792,7 +805,8 @@ EPSILON_RATIO_VALUE = 1000  # should be less than half of num_of_policy_episodes
 # todo remove all hardcoded numbers
 # todo make parameters needed everywhere global
 # todo use list comprehensions to make code faster
-# todo try IRL with one unique real episode
+# todo run IRL for each real episode and then take average
+# todo for all real episodes, check when final answer shows up in rewards list
 # todo figure out good way to report final rewards
 
 main()
