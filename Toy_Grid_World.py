@@ -622,7 +622,7 @@ def main():
         between the observed behaviour and any other policy. This random
         policy is the first policy we begin with.
 
-        Action 2 = move right
+        Action 1 = move right
 
         :return:    policy filled with all 2s
         """
