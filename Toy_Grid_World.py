@@ -1,5 +1,4 @@
 import numpy as np
-from collections import Counter
 np.set_printoptions(linewidth=np.nan)
 
 
@@ -81,17 +80,13 @@ def calculate_gradient(weights, policies):
 
             if current_action == 0:
 
-                current_state = [current_state[0], current_state[1] - 1]
+                current_state = [current_state[0] + 1, current_state[1]]
 
             elif current_action == 1:
 
-                current_state = [current_state[0] + 1, current_state[1]]
-
-            elif current_action == 2:
-
                 current_state = [current_state[0], current_state[1] + 1]
 
-            elif current_action == 3:
+            elif current_action == 2:
 
                 current_state = [current_state[0] - 1, current_state[1]]
 
@@ -107,37 +102,30 @@ def calculate_gradient(weights, policies):
         """
         Create real episodes for the inverse reinforcement
         learning to learn from. The episodes exist in a 3x7
-        Gridworld. They begin in [1,0] and end in [1,6]. All
-        four episodes avoid locations [1, 1], [0, 3], [2, 3],
-        and [1, 5]. The goal is for this IRL method to reproduce
+        Gridworld. They begin in [1,0] and end in [1,6]. Both
+        episodes avoid the squares in the middle of Gridworld.
+        These squares are [1, 1], [1, 2], [1, 3], [1, 4], and
+        [1, 5]. The goal is for this IRL method to reproduce
         the fact that certain squares are avoided.
+
+        Action = 0 (move down)
+        Action = 1 (move right)
+        Action = 2 (move up)
 
         :return: episodes for IRL method to learn from
         """
+        all_over = [[1, 0], 0, [2, 0], 1, [2, 1], 1, [2, 2], 1, [2, 3], 1,
+                    [2, 4], 1, [2, 5], 1, [2, 6], 2, [1, 6], None]
 
-        first_over_second_over = [[1, 0], 1, [2, 0], 2, [2, 1], 2, [2, 2], 3, [1, 2], 2, [1, 3], 2,
-                                  [1, 4], 1, [2, 4], 2, [2, 5], 2, [2, 6], 3, [1, 6], None]
+        all_under = [[1, 0], 2, [0, 0], 1, [0, 1], 1, [0, 2], 1, [0, 3], 1,
+                     [0, 4], 1, [0, 5], 1, [0, 6], 0, [1, 6], None]
 
-        first_over_second_under = [[1, 0], 1, [2, 0], 2, [2, 1], 2, [2, 2], 3, [1, 2], 2, [1, 3], 2,
-                                   [1, 4], 3, [0, 4], 2, [0, 5], 2, [0, 6], 1, [1, 6], None]
-
-        first_under_second_over = [[1, 0], 3, [0, 0], 2, [0, 1], 2, [0, 2], 3, [1, 2], 2, [1, 3], 2,
-                                   [1, 4], 1, [2, 4], 2, [2, 5], 2, [2, 6], 3, [1, 6], None]
-
-        first_under_second_under = [[1, 0], 3, [0, 0], 2, [0, 1], 2, [0, 2], 3, [1, 2], 2, [1, 3], 2,
-                                    [1, 4], 3, [0, 4], 2, [0, 5], 2, [0, 6], 1, [1, 6], None]
-
-        episodes = [first_over_second_over,
-                    first_over_second_under,
-                    first_under_second_over,
-                    first_under_second_under]
-
-        # episodes = [first_over_second_over,
-        #             first_over_second_under]
+        episodes = [all_over,
+                    all_under]
 
         return episodes
 
-    def calculate_approximate_reward(episodes, feature_vector):
+    def calculate_reward(episodes, feature_vector):
         """
         Calculate the average empirical return V_i^{pi} for
         feature vector i and policy pi derived from the given episodes.
@@ -163,15 +151,11 @@ def calculate_gradient(weights, policies):
 
         for i, episode in enumerate(episodes):
 
-            # todo rewrite current_ep and episode values using list comprehension
-
-            current_episode_value = 0
             states = episode[::2]
+            current_episode_value = [feature_vector[convert_state_to_vector_index(state)]
+                                     * REWARD_DISCOUNT_FACTOR ** k for k, state in enumerate(states)]
 
-            for k, state in enumerate(states):
-                current_episode_value += feature_vector[convert_state_to_vector_index(state)] * REWARD_DISCOUNT_FACTOR ** k
-
-            episode_values[i] = current_episode_value
+            episode_values[i] = sum(current_episode_value)
 
         mean_episode_value = np.mean(episode_values)
 
@@ -201,10 +185,10 @@ def calculate_gradient(weights, policies):
         for feature_vector_number in range(21):
 
             feature_vector = get_feature_vector(feature_vector_number)
-            perfect_policy_weight_value = calculate_approximate_reward(real_episodes, feature_vector)
+            perfect_policy_weight_value = calculate_reward(real_episodes, feature_vector)
 
             simulated_episodes = create_simulated_episodes(current_policy)
-            policy_weight_value = calculate_approximate_reward(simulated_episodes, feature_vector)
+            policy_weight_value = calculate_reward(simulated_episodes, feature_vector)
 
             sum_product[feature_vector_number] = weights[feature_vector_number] * (perfect_policy_weight_value
                                                                                    - policy_weight_value)
@@ -236,29 +220,20 @@ def calculate_gradient(weights, policies):
         """
         feature_vector = get_feature_vector(feature_vector_number)
         real_episodes = create_real_episodes()
-        perfect_policy_weight_value = calculate_approximate_reward(real_episodes, feature_vector)
+        perfect_policy_weight_value = calculate_reward(real_episodes, feature_vector)
 
         simulated_episodes = create_simulated_episodes(current_policy)
-        policy_weight_value = calculate_approximate_reward(simulated_episodes, feature_vector)
+        policy_weight_value = calculate_reward(simulated_episodes, feature_vector)
 
         return perfect_policy_weight_value - policy_weight_value
 
-    # todo use list comprehensions here
-
-    gradient = []
+    gradient = np.zeros(21)
 
     for j in range(21):
 
-        weight_gradient = 0
-
-        for policy in policies:
-
-            p_gradient = calculate_p_gradient(policy)
-            value_function_difference = calculate_value_function_difference(j, policy)
-
-            weight_gradient += p_gradient*value_function_difference
-
-        gradient.append(weight_gradient)
+        weight_gradient = [calculate_p_gradient(policy) * calculate_value_function_difference(j, policy)
+                           for policy in policies]
+        gradient[j] = (sum(weight_gradient))
 
     return gradient
 
@@ -275,10 +250,9 @@ def step_model(state, action, weights, previous_state):
     Sub methods filter through different values for each state
     element and then consider the appropriate action and reward.
 
-    Action = 0 (move left)
-    Action = 1 (move up)
-    Action = 2 (move right)
-    Action = 3 (move down)
+    Action = 0 (move down)
+    Action = 1 (move right)
+    Action = 2 (move up)
 
     :param state:           Current state of the agent
     :param action:          Current action the agent takes
@@ -288,17 +262,9 @@ def step_model(state, action, weights, previous_state):
     """
     def step_state_zero():
 
-        # todo could move index and previous state check to top
-
         def step_state_zero_zero():
 
-            index = convert_state_to_vector_index(state)
-
             if action == 0:
-
-                return state, EXIT_BOUNDARY_REWARD, False
-
-            elif action == 1:
 
                 new_state = [state[0] + 1, state[1]]
 
@@ -307,7 +273,7 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
-            elif action == 2:
+            elif action == 1:
 
                 new_state = [state[0], state[1] + 1]
 
@@ -316,49 +282,27 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
-            elif action == 3:
+            elif action == 2:
 
                 return state, EXIT_BOUNDARY_REWARD, False
 
         def step_state_zero_six():
 
-            index = convert_state_to_vector_index(state)
-
             if action == 0:
 
-                new_state = [state[0], state[1] - 1]
-
-                if new_state != previous_state:
-                    return new_state, weights[index], False
-                else:
-                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
+                return [state[0] + 1, state[1]], TERMINAL_STATE_REWARD, True
 
             elif action == 1:
 
-                return [state[0] + 1, state[1]], TERMINAL_STATE_REWARD, True
+                return state, EXIT_BOUNDARY_REWARD, False
 
             elif action == 2:
 
                 return state, EXIT_BOUNDARY_REWARD, False
 
-            elif action == 3:
-
-                return state, EXIT_BOUNDARY_REWARD, False
-
         def step_state_zero_middle():
 
-            index = convert_state_to_vector_index(state)
-
             if action == 0:
-
-                new_state = [state[0], state[1] - 1]
-
-                if new_state != previous_state:
-                    return new_state, weights[index], False
-                else:
-                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
-
-            elif action == 1:
 
                 new_state = [state[0] + 1, state[1]]
 
@@ -367,7 +311,7 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
-            elif action == 2:
+            elif action == 1:
 
                 new_state = [state[0], state[1] + 1]
 
@@ -376,7 +320,7 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
-            elif action == 3:
+            elif action == 2:
 
                 return state, EXIT_BOUNDARY_REWARD, False
 
@@ -396,13 +340,7 @@ def step_model(state, action, weights, previous_state):
 
         def step_state_one_zero():
 
-            index = convert_state_to_vector_index(state)
-
             if action == 0:
-
-                return state, EXIT_BOUNDARY_REWARD, False
-
-            elif action == 1:
 
                 new_state = [state[0] + 1, state[1]]
 
@@ -411,7 +349,7 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
-            elif action == 2:
+            elif action == 1:
 
                 new_state = [state[0], state[1] + 1]
 
@@ -420,7 +358,7 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
-            elif action == 3:
+            elif action == 2:
 
                 new_state = [state[0] - 1, state[1]]
 
@@ -431,18 +369,7 @@ def step_model(state, action, weights, previous_state):
 
         def step_state_one_five():
 
-            index = convert_state_to_vector_index(state)
-
             if action == 0:
-
-                new_state = [state[0], state[1] - 1]
-
-                if new_state != previous_state:
-                    return new_state, weights[index], False
-                else:
-                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
-
-            elif action == 1:
 
                 new_state = [state[0] + 1, state[1]]
 
@@ -451,11 +378,11 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
-            elif action == 2:
+            elif action == 1:
 
                 return [state[0], state[1] + 1], TERMINAL_STATE_REWARD, True
 
-            elif action == 3:
+            elif action == 2:
 
                 new_state = [state[0] - 1, state[1]]
 
@@ -466,18 +393,7 @@ def step_model(state, action, weights, previous_state):
 
         def step_state_one_middle():
 
-            index = convert_state_to_vector_index(state)
-
             if action == 0:
-
-                new_state = [state[0], state[1] - 1]
-
-                if new_state != previous_state:
-                    return new_state, weights[index], False
-                else:
-                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
-
-            elif action == 1:
 
                 new_state = [state[0] + 1, state[1]]
 
@@ -486,7 +402,7 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
-            elif action == 2:
+            elif action == 1:
 
                 new_state = [state[0], state[1] + 1]
 
@@ -495,7 +411,7 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
-            elif action == 3:
+            elif action == 2:
 
                 new_state = [state[0] - 1, state[1]]
 
@@ -520,17 +436,11 @@ def step_model(state, action, weights, previous_state):
 
         def step_state_two_zero():
 
-            index = convert_state_to_vector_index(state)
-
             if action == 0:
 
                 return state, EXIT_BOUNDARY_REWARD, False
 
             elif action == 1:
-
-                return state, EXIT_BOUNDARY_REWARD, False
-
-            elif action == 2:
 
                 new_state = [state[0], state[1] + 1]
 
@@ -539,7 +449,7 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
-            elif action == 3:
+            elif action == 2:
 
                 new_state = [state[0] - 1, state[1]]
 
@@ -550,47 +460,25 @@ def step_model(state, action, weights, previous_state):
 
         def step_state_two_six():
 
-            index = convert_state_to_vector_index(state)
-
             if action == 0:
 
-                new_state = [state[0], state[1] - 1]
-
-                if new_state != previous_state:
-                    return new_state, weights[index], False
-                else:
-                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
+                return state, EXIT_BOUNDARY_REWARD, False
 
             elif action == 1:
 
                 return state, EXIT_BOUNDARY_REWARD, False
 
             elif action == 2:
-
-                return state, EXIT_BOUNDARY_REWARD, False
-
-            elif action == 3:
 
                 return [state[0] - 1, state[1]], TERMINAL_STATE_REWARD, True
 
         def step_state_two_middle():
 
-            index = convert_state_to_vector_index(state)
-
             if action == 0:
-
-                new_state = [state[0], state[1] - 1]
-
-                if new_state != previous_state:
-                    return new_state, weights[index], False
-                else:
-                    return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
-
-            elif action == 1:
 
                 return state, EXIT_BOUNDARY_REWARD, False
 
-            elif action == 2:
+            elif action == 1:
 
                 new_state = [state[0], state[1] + 1]
 
@@ -599,7 +487,7 @@ def step_model(state, action, weights, previous_state):
                 else:
                     return new_state, REPEAT_PREVIOUS_STATE_REWARD, False
 
-            elif action == 3:
+            elif action == 2:
 
                 new_state = [state[0] - 1, state[1]]
 
@@ -620,6 +508,8 @@ def step_model(state, action, weights, previous_state):
 
             return step_state_two_middle()
 
+    index = convert_state_to_vector_index(state)
+
     if state[0] == 0:
 
         return step_state_zero()
@@ -633,40 +523,38 @@ def step_model(state, action, weights, previous_state):
         return step_state_two()
 
 
-def calculate_maximal_reward_policy(weights):
+def calculate_policy(weights):
     """
+    The weights that we calculate can also be
+    interpreted as rewards. For the given set of weights,
+    we calculate a policy that receives a maximal total reward
+    through an episode of following the policy.
 
-    :param weights:
-    :return:
+    We calculate this policy using the SARSA(lambda) method
+    found in these lecture notes:
+
+    http://www0.cs.ucl.ac.uk/staff/d.silver/web/Teaching_files/control.pdf
+
+    :param weights:     approximate values for rewards used to calculate policy
+    :return:            policy that maps states to actions in a way that maximises
+                        the total reward received
     """
-    policy = np.random.randint(0, 4, [3, 7])
-    action_value_function = np.zeros([3, 7, 4])
-    state_action_counter = np.zeros([3, 7, 4])
+    policy = np.random.randint(0, 3, [3, 7])
+    action_value_function = np.zeros([3, 7, 3])
+    state_action_counter = np.zeros([3, 7, 3])
     state_counter = np.zeros([3, 7])
 
     for i in range(MAXIMUM_NUMBER_OF_POLICY_EPISODES):
 
-        eligibility_traces = np.zeros([3, 7, 4])
+        eligibility_traces = np.zeros([3, 7, 3])
 
         state = [1, 0]
         previous_state = [0, 6]
         action = policy[state[0], state[1]]
 
-        episode = list()
-        episode.append(state)
-        episode.append(action)
-
-        # todo there has to be a better way to do the following logic
-        # todo introduce max limit on how long policy can look for terminal state
-        # todo introduce check for when policy gets caught in a loop
-        terminal_state = False
+        new_state, reward, terminal_state = step_model(state, action, weights, previous_state)
 
         while not terminal_state:
-
-            new_state, reward, terminal_state = step_model(state, action, weights, previous_state)
-
-            if terminal_state:
-                break
 
             state_counter[state[0], state[1]] += 1
 
@@ -677,22 +565,18 @@ def calculate_maximal_reward_policy(weights):
             probability = np.random.rand()
 
             if probability <= epsilon:
-                policy[new_state[0], new_state[1]] = np.random.randint(0, 4)
+
+                policy[new_state[0], new_state[1]] = np.random.randint(0, 3)
 
             else:
+
                 policy[new_state[0], new_state[1]] = np.argmax(action_value_function[new_state[0], new_state[1], :])
 
             new_action = policy[new_state[0], new_state[1]]
-            episode.append(new_state)
-            episode.append(new_action)
             delta = (reward + action_value_function[new_state[0], new_state[1], new_action]
                      - action_value_function[state_action_pair])
 
             eligibility_traces[state_action_pair] += 1
-
-            print()
-            print(policy)
-            print()
 
             action_value_function[state_action_pair] += (delta * eligibility_traces[state_action_pair]
                                                          / state_action_counter[state_action_pair])
@@ -702,39 +586,58 @@ def calculate_maximal_reward_policy(weights):
             state = new_state
             action = new_action
 
+            new_state, reward, terminal_state = step_model(state, action, weights, previous_state)
+
     return policy
 
 
 def main():
     """
-    Main
+    We are demonstrating the use of inverse reinforcement learning in
+    calculating a reward function that would reproduce observed behaviour.
+    This behaviour is assumed to be expert behaviour. The goal is to learn
+    a reward function that would allow a reinforcement agent to reproduce
+    the observed behaviour. The observed behaviour takes the form of trajectories
+    (sequences of states and actions). We find the reward function by using gradient descent
+    to find the weights that maximise the difference between the observed behaviour and
+    any other policy behaviour. Given a new set of weights, we calculate a new policy
+    to consider using the SARSA(lambda) method.
 
-    DESCRIPTION
-    Apply inverse reinforcement learning  in https://ai.stanford.edu/~ang/papers/icml00-irl.pdf by Ng
-    to https://www.highd-dataset.com/ dataset
+    Full details can be found in section 5 of
+    'Algorithms for Inverse Reinforcement Learning' by Ng and Russel
+    https://ai.stanford.edu/~ang/papers/icml00-irl.pdf.
 
-    PARAMETERS
-     - learning rate:       the step jump for each weight update
-     - max_iterations:      the maximum number of times to iterate gradient descent
-     - precision:           the difference between consecutive weights to stop descending
-     - discount:            amount to decrease confidence in future rewards
+    Details of gradient descent can be found here:
+    https://en.wikipedia.org/wiki/Gradient_descent
+
+    Details of the SARSA(lambda) method can be found here:
+    http://www0.cs.ucl.ac.uk/staff/d.silver/web/Teaching_files/control.pdf
     """
 
-    def generate_random_policy():
+    def generate_initial_policy():
         """
-        A random handmade policy to begin gradient descent method
+        A simple policy used to begin the inverse reinforcement learning
+        method. When we are calculating the weights using gradient
+        descent, we want to maximise the value function difference
+        between the observed behaviour and any other policy. This random
+        policy is the first policy we begin with.
+
+        Action 2 = move right
+
+        :return:    policy filled with all 2s
         """
-        policy = np.array([[2, 2, 2, 2, 2, 2, 2],
-                           [2, 2, 2, 2, 2, 2, 2],
-                           [2, 2, 2, 2, 2, 2, 2]])
+        policy = np.array([[1, 1, 1, 1, 1, 1, 1],
+                           [1, 1, 1, 1, 1, 1, 1],
+                           [1, 1, 1, 1, 1, 1, 1]])
 
         return policy
 
-    random_policy = generate_random_policy()
+    random_policy = generate_initial_policy()
     policies = [random_policy]
     rewards = []
+    final_reward = np.zeros([3*7])
 
-    while len(policies) < MAXIMUM_NUMBER_OF_POLICIES:
+    while len(policies) - 1 < MAXIMUM_NUMBER_OF_POLICIES:
 
         print('Progress:', len(policies) / MAXIMUM_NUMBER_OF_POLICIES * 100, '%')
 
@@ -756,8 +659,8 @@ def main():
 
             if step <= REQUIRED_STEP_PRECISION:
 
-                new_policy = calculate_maximal_reward_policy(next_weights)
-                rewards.append(str(np.resize(next_weights, [3, 7])))
+                new_policy = calculate_policy(next_weights)
+                rewards.append(np.resize(next_weights, [3, 7]))
                 policies.append(new_policy)
                 policy_appended = True
                 break
@@ -768,26 +671,27 @@ def main():
 
             if probability >= 0.5:
 
-                new_policy = calculate_maximal_reward_policy(next_weights)
-                rewards.append(str(np.resize(next_weights, [3, 7])))
+                new_policy = calculate_policy(next_weights)
+                rewards.append(np.resize(next_weights, [3, 7]))
 
             else:
 
-                new_policy = calculate_maximal_reward_policy(current_weights)
-                rewards.append(str(np.resize(current_weights, [3, 7])))
+                new_policy = calculate_policy(current_weights)
+                rewards.append(np.resize(current_weights, [3, 7]))
 
             policies.append(new_policy)
 
+        final_reward = np.resize(next_weights, [3, 7])
+
     print()
     print('Final Reward Function')
-    print(np.resize(next_weights, [3, 7]))
-    # print(rewards)
-    # print(Counter(rewards).most_common(4))
+    print()
+    print(final_reward)
 
 
 LEARNING_RATE = 0.1
 MAXIMUM_WEIGHT_UPDATES = 50
-MAXIMUM_NUMBER_OF_POLICIES = 10
+MAXIMUM_NUMBER_OF_POLICIES = 1
 REQUIRED_STEP_PRECISION = 0.001
 
 REWARD_DISCOUNT_FACTOR = 1
@@ -796,17 +700,10 @@ REPEAT_PREVIOUS_STATE_REWARD = -1
 TERMINAL_STATE_REWARD = 1
 
 P_FUNCTION_REWARD = 1
-P_FUNCTION_PENALTY = 2  # 10000
+P_FUNCTION_PENALTY = 2
 
 MAXIMUM_NUMBER_OF_POLICY_EPISODES = 10000
 LAMBDA = 0.9
-EPSILON_RATIO_VALUE = 1000  # should be less than half of num_of_policy_episodes
-
-# todo remove all hardcoded numbers
-# todo make parameters needed everywhere global
-# todo use list comprehensions to make code faster
-# todo run IRL for each real episode and then take average
-# todo for all real episodes, check when final answer shows up in rewards list
-# todo figure out good way to report final rewards
+EPSILON_RATIO_VALUE = 1000
 
 main()
