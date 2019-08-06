@@ -1,78 +1,136 @@
 import numpy as np
 import pandas as pd
+import os
 
 
-def import_motorway_data():
+def get_file_names_from_path(path):
 
-    data = pd.read_csv('01_tracks.csv',
-                       usecols=[6, 10, 15],
-                       dtype=np.float)
+    files = []
+    for r, d, f in os.walk(path):
+        for file in f:
+            files.append(os.path.join(r, file))
+
+    return files
+
+
+def get_data_from_file_name(file_name):
+
+    # todo reduce imports based on what we are importing and what data we eventually need
+    # discard anything unnecessary
+    data = pd.read_csv(file_name)  # , usecols=[6, 12, 14, 15], dtype=np.float)
     return data
 
 
-def add_time_to_collision_data(data):
+def get_no_lane_change_vehicle_id(data):
 
-    # todo analyse using columns instead of rows
-    # might be faster
-    # todo consider removing case when forward vehicle is faster
-    # use ttc column in raw data
-
-    def calculate_time_to_collision(row):
-
-        if row.xVelocity - row.precedingXVelocity == 0:
-
-            return -999
-
-        elif row.precedingXVelocity == 0:
-
-            return np.nan
-
-        else:
-
-            return row.frontSightDistance / (row.xVelocity - row.precedingXVelocity)
-
-    data.dropna(inplace=True)
-    data['xVelocity'] = abs(data['xVelocity'])
-    data['precedingXVelocity'] = abs(data['precedingXVelocity'])
-    data['time_to_collision'] = data.apply(calculate_time_to_collision, axis=1)
-
-    return data
+    return data[data['numLaneChanges'] == 0]['id']
 
 
-def calculate_bins(data):
+def get_vehicle_data_from_id(data, vehicle_id):
 
-    bin_minimum = int(np.floor(min(data['time_to_collision'])))
-    bin_maximum = int(np.ceil(max(data['time_to_collision'])))
-    bin_size = int(bin_maximum // NUMBER_OF_BINS)
-
-    return list(range(bin_minimum, bin_maximum, bin_size))
+    return data[data['id'] == vehicle_id]
 
 
-def add_state_data(data):
+def has_possible_collision(data):
 
-    bins = calculate_bins(data)
-    data['state'] = pd.cut(data['time_to_collision'], bins, right=False)
-    return data
+    return any(data['ttc'] > 0)
+
+
+def calculate_vehicle_trajectory(data):
+
+    # todo start here. Clean all this up
+
+    # data.dropna(inplace=True)
+    def calculate_bins():
+
+        return list(range(0, BIN_STEP_SIZE*NUMBER_OF_BINS, BIN_STEP_SIZE))
+
+    bins = calculate_bins()
+    trajectory = list()
+
+    # calculate actions by checking steps in acceleration
+    # speed up = jump in acceleration by some step size threshold
+    # maintain = acceleration in some neighbourhood of 0
+    # slow down = jump down in acceleration by some step size threshold
+
+    # calculate initial state
+    # record acceleration
+    # continue until next threshold reached
+    # record that action
+    # record state the vehicle is now in
+    # repeat
+
+    acceleration_bins = [-1e99, -ACCELERATION_STEP_THRESHOLD, ACCELERATION_STEP_THRESHOLD, 1e99]
+
+    states = (pd.cut(data['ttc'], bins, right=False, labels=False)
+              .dropna()
+              .reset_index(drop=True))  # set drop = False if you need original indices back
+
+    actions = (pd.cut(data['xAcceleration'], acceleration_bins, right=False,
+                      labels=['slow down', 'maintain speed', 'speed up'])
+               .reset_index(drop=True))
+
+    current_state = states[0]
+    # if speed is negative, acceleration action needs to be flipped
+    # otherwise, use action
+    current_action = actions[0]
+
+    trajectory.append(current_state)
+    trajectory.append(current_action)
+
+    print('states', states)
+    print('actions', actions)
+    print('trajectory', trajectory)
+
+
+    return trajectory
 
 
 def main():
 
-    raw_motorway_data = import_motorway_data()
-    time_to_collision_data = add_time_to_collision_data(raw_motorway_data)
-    state_data = add_state_data(time_to_collision_data)
+    all_raw_data_file_names = get_file_names_from_path(RAW_DATA_PATH)
+    all_meta_data_file_names = get_file_names_from_path(META_DATA_PATH)
 
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-        print(state_data[state_data['time_to_collision'] < 20])
+    zipped_raw_and_meta_file_names = list(zip(all_raw_data_file_names, all_meta_data_file_names))
 
-    # calculate trajectories for each vehicle id in state data
-    # using state = time to collision and
-    # action = slow down, maintain speed, speed up
+    all_trajectories = list()
+
+    for raw_data_file_name, meta_data_file_name in zipped_raw_and_meta_file_names:
+
+        all_raw_data = get_data_from_file_name(raw_data_file_name)
+        all_meta_data = get_data_from_file_name(meta_data_file_name)
+
+        no_lane_change_vehicle_id = get_no_lane_change_vehicle_id(all_meta_data)
+
+        for vehicle_id in no_lane_change_vehicle_id:
+
+            vehicle_data = get_vehicle_data_from_id(all_raw_data, vehicle_id)
+
+            if has_possible_collision(vehicle_data):
+
+                # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+                #     print(vehicle_data)
+                following_data = vehicle_data[vehicle_data['ttc'] > 0]
+                vehicle_trajectory = calculate_vehicle_trajectory(following_data)
 
 
+
+                # print(vehicle_trajectory)
+                # calculate actions
+                # calculate trajectories
+                # add trajectories
+
+    # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+    # print(all_trajectories)
+
+
+RAW_DATA_PATH = 'M:/GitHub/Inverse_Reinforcement_Learning/Track_Data'
+META_DATA_PATH = 'M:/GitHub/Inverse_Reinforcement_Learning/Track_Meta_Data'
 NUMBER_OF_BINS = 100
+BIN_STEP_SIZE = 3
+ACCELERATION_STEP_THRESHOLD = 0.1
+MAINTAIN_SPEED_THRESHOLD = 10
 
-# todo remove trajectories that contain a lane change
-# todo the ttc column in data stands for time to collision
-
+# todo move methods around so that they make sense, correct dependencies
 
 main()
