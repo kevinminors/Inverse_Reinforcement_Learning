@@ -46,9 +46,9 @@ def calculate_vehicle_trajectory(data):
 
         return [-1e99, -ACCELERATION_STEP_THRESHOLD, ACCELERATION_STEP_THRESHOLD, 1e99]
 
-    def one_continuous_trajectory(indexes):
+    def one_continuous_trajectory(current_data):
 
-        return len(indexes) == len(list(range(min(indexes), max(indexes) + 1)))
+        return len(current_data.index) == len(list(range(min(current_data.index), max(current_data.index) + 1)))
 
     def append_new_state_and_action(current_trajectory, state, action):
 
@@ -57,37 +57,49 @@ def calculate_vehicle_trajectory(data):
 
         return current_trajectory
 
-    def calculate_action(state_index):
+    def following_same_car_whole_trajectory(current_data):
 
-        if data.iloc[state_index, 6] < 0:
+        return len(current_data.iloc[:, 16].unique()) == 1
 
-            action = 2 - actions.iloc[state_index, 1]
+    def get_single_trajectory(current_data):
 
-        else:
+        def calculate_action(state_index):
 
-            action = actions.iloc[state_index, 1]
+            if current_data.iloc[state_index, 6] < 0:
 
-        return action
+                action = 2 - actions.iloc[state_index, 1]
 
-    ttc_bins = get_ttc_bins()
-    acceleration_bins = get_acceleration_bins()
+            else:
 
-    states = (pd.cut(data['ttc'], ttc_bins, right=False, labels=False)
-              # remove labels=False if you want to see intervals
-              .dropna()
-              .reset_index(drop=False))  # set drop = False if you need original indices back
+                action = actions.iloc[state_index, 1]
 
-    actions = (pd.cut(data['xAcceleration'], acceleration_bins, right=False, labels=False)
-               .reset_index(drop=False))
+            return action
 
-    if one_continuous_trajectory(states.iloc[:, 0]):
+        states = (pd.cut(current_data['ttc'], ttc_bins, right=False, labels=False)
+                  # remove labels=False if you want to see intervals
+                  .dropna()
+                  .reset_index(drop=False))  # set drop = False if you need original indices back
 
-        trajectory = list()
+        actions = (pd.cut(current_data['xAcceleration'], acceleration_bins, right=False, labels=False)
+                   .reset_index(drop=False))
+
+        single_trajectory = list()
+
+        with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+            print()
+            print('data')
+            print(current_data[['xVelocity', 'xAcceleration', 'ttc']])
+            print()
+            print('states')
+            print(states)
+            print()
+            print('actions')
+            print(actions)
 
         current_state = states.iloc[0, 1]
         current_action = calculate_action(0)
 
-        trajectory = append_new_state_and_action(trajectory, current_state, current_action)
+        single_trajectory = append_new_state_and_action(single_trajectory, current_state, current_action)
 
         current_state_counter = 0
 
@@ -98,7 +110,7 @@ def calculate_vehicle_trajectory(data):
                 next_state = states.iloc[next_state_index, 1]
                 next_action = calculate_action(next_state_index)
 
-                trajectory = append_new_state_and_action(trajectory, next_state, next_action)
+                single_trajectory = append_new_state_and_action(single_trajectory, next_state, next_action)
 
                 current_state = next_state
                 current_state_counter = 0
@@ -107,12 +119,12 @@ def calculate_vehicle_trajectory(data):
 
                 next_action = calculate_action(next_state_index)
 
-                trajectory = append_new_state_and_action(trajectory, current_state, next_action)
+                single_trajectory = append_new_state_and_action(single_trajectory, current_state, next_action)
 
                 current_state_counter = 0
 
             elif (states.iloc[next_state_index, 1] == current_state
-                    and current_state_counter < NO_STATE_CHANGE_THRESHOLD):
+                  and current_state_counter < NO_STATE_CHANGE_THRESHOLD):
 
                 current_state_counter += 1
 
@@ -122,30 +134,88 @@ def calculate_vehicle_trajectory(data):
 
         with pd.option_context('display.max_rows', None, 'display.max_columns', None):
             print()
-            print('data')
-            print(data[['xVelocity', 'xAcceleration', 'ttc']])
-            print()
-            print('states')
-            print(states)
-            print()
-            print('actions')
-            print(actions)
-            print()
-            print('trajectory')
-            print(trajectory)
+            print('single_trajectory')
+            print(np.reshape(single_trajectory, (len(single_trajectory)//2, 2)))
 
         # todo step through these trajectories to make sure nothing weird is happening
 
-        return trajectory
+        return single_trajectory
+
+    def get_multiple_front_car_trajectories(current_data):
+
+        all_front_car_ids = current_data.iloc[:, 16].unique()
+        current_trajectories = list()
+
+        for front_car_id in all_front_car_ids:
+            data_with_current_front_car = current_data[current_data.iloc[:, 16] == front_car_id]
+            trajectory_with_current_front_car = get_single_trajectory(data_with_current_front_car)
+            current_trajectories.append(trajectory_with_current_front_car)
+
+        return current_trajectories
+
+    def get_single_trajectory_indexes():
+
+        all_trajectory_indexes = list()
+        start_index = data.index[0]
+
+        current_index_list = [start_index]
+        previous_index = start_index
+
+        for current_index in data.index[1:]:
+
+            if (current_index == previous_index + 1) and (current_index != data.index[-1]):
+
+                current_index_list.append(current_index)
+                previous_index = current_index
+
+            elif current_index < data.index[-1]:
+
+                all_trajectory_indexes.append(pd.Int64Index(current_index_list))
+                current_index_list = [current_index]
+                previous_index = current_index
+
+            else:
+
+                current_index_list.append(current_index)
+                all_trajectory_indexes.append(pd.Int64Index(current_index_list))
+
+        return all_trajectory_indexes
+
+    ttc_bins = get_ttc_bins()
+    acceleration_bins = get_acceleration_bins()
+
+    if one_continuous_trajectory(data):
+
+        if following_same_car_whole_trajectory(data):
+
+            trajectory = get_single_trajectory(data)
+            return trajectory, False
+
+        else:
+
+            trajectories = get_multiple_front_car_trajectories(data)
+            return trajectories, True
 
     else:
 
-        # break states down into seperate trajectories
-        # calculate trajectory for each piece
-        print(states)
+        single_trajectory_indexes = get_single_trajectory_indexes()
         trajectories = list()
 
-        # write above code as a method and then call it here for each bit of trajectory
+        for single_trajectory_index in single_trajectory_indexes:
+
+            single_trajectory_data = data.loc[single_trajectory_index, :]
+
+            if following_same_car_whole_trajectory(single_trajectory_data):
+
+                trajectory = get_single_trajectory(single_trajectory_data)
+                trajectories.append(trajectory)
+
+            else:
+
+                current_trajectories = get_multiple_front_car_trajectories(single_trajectory_data)
+                trajectories.extend(current_trajectories)
+
+        return trajectories, True
 
 
 def main():
@@ -173,23 +243,23 @@ def main():
                 # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
                 #     print(vehicle_data)
                 following_data = vehicle_data[vehicle_data['ttc'] > 0]
-                vehicle_trajectory = calculate_vehicle_trajectory(following_data)
+                vehicle_trajectory, multiple_trajectories = calculate_vehicle_trajectory(following_data)
 
                 # check if return value is one list or if multiple lists of lists
 
+                # todo check trajs are added correctly
+                if multiple_trajectories:
+                    all_trajectories.extend(vehicle_trajectory)
+                else:
+                    all_trajectories.append(vehicle_trajectory)
 
-                # print(vehicle_trajectory)
-                # calculate actions
-                # calculate trajectories
-                # add trajectories
-
-    # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-    # print(all_trajectories)
+    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+        print(all_trajectories)
 
 
 RAW_DATA_PATH = 'M:/GitHub/Inverse_Reinforcement_Learning/Track_Data'
 META_DATA_PATH = 'M:/GitHub/Inverse_Reinforcement_Learning/Track_Meta_Data'
-NUMBER_OF_BINS = 100
+NUMBER_OF_BINS = 10000000
 BIN_STEP_SIZE = 3
 ACCELERATION_STEP_THRESHOLD = 0.1
 NO_STATE_CHANGE_THRESHOLD = 10
@@ -197,7 +267,8 @@ NO_STATE_CHANGE_THRESHOLD = 10
 # todo move methods around so that they make sense, correct dependencies
 # todo do action check before during bin calculation or at some other time. THINK ABOUT THIS
 # todo reduce data we are reading in and then use iloc everywhere
-# todo add check if car in front moved and ttc is calculated for a car further in front. need new traj for this
-# when preceding id changes during trajectory
+# todo calculate state bins by calculating maximum ttc in all files
+# or add condition where we throw away all data with ttcs bigger than our biggest bin
+# if the time to collision is over an hour, we dont need it
 
 main()
