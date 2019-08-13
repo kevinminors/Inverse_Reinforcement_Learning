@@ -3,7 +3,7 @@ np.set_printoptions(linewidth=np.nan)
 
 LEARNING_RATE = 0.1
 MAXIMUM_WEIGHT_UPDATES = 50
-MAXIMUM_NUMBER_OF_POLICIES = 1
+MAXIMUM_NUMBER_OF_POLICIES = 10
 REQUIRED_STEP_PRECISION = 0.001
 
 REWARD_DISCOUNT_FACTOR = 1
@@ -22,6 +22,8 @@ EPSILON_RATIO_VALUE = 1000
 AVOID_COLLISION_REWARD = 1
 COLLISION_PENALTY = -1
 TOO_SLOW_PENALTY = -1
+
+RANDOM_STATE_CHANGE_PROBABILITY = 0.7
 
 # todo add print statements everywhere to see what is actually going on
 
@@ -96,7 +98,16 @@ def main():
             episode = [current_state, current_action]
             max_episode_length = generate_max_episode_length()
 
-            while (current_state != 0) and (current_state != state_bin_length) and (len(episode) < max_episode_length):
+            while (current_state != 0) and (current_state != state_bin_length - 1) and (len(episode) < max_episode_length):
+                # print()
+                # print('current state')
+                # print(current_state)
+                # print()
+                # print('episode')
+                # print(episode, len(episode))
+                # print()
+                # print('current action')
+                # print(current_action)
 
                 # todo add in randomness here. Ttc doesn't always change according to these actions.
                 # Sometimes its the opposite!
@@ -107,7 +118,11 @@ def main():
 
                 elif current_action == 1:
 
-                    pass
+                    random_number = np.random.random()
+
+                    if random_number < RANDOM_STATE_CHANGE_PROBABILITY:
+                        change = np.random.choice([-1, 1])
+                        current_state += change
 
                 elif current_action == 2:
 
@@ -151,6 +166,12 @@ def main():
                                          for k, state in enumerate(states)]
 
                 episode_values[n] = sum(current_episode_value)
+                # print()
+                # print('states')
+                # print(states)
+                # print()
+                # print('current episode value')
+                # print(current_episode_value)
 
             mean_episode_value = np.mean(episode_values)
 
@@ -221,6 +242,7 @@ def main():
         gradient = np.zeros(state_bin_length)
 
         for j in range(state_bin_length):
+            print('gradient entry', j, 'being calculated')
             weight_gradient = [calculate_p_gradient(policy) * calculate_value_function_difference(j, policy)
                                for policy in current_policies]
             gradient[j] = (sum(weight_gradient))
@@ -291,7 +313,7 @@ def main():
 
                 return state - 1, weights[state], False
 
-        if (state > 0) and (state < state_bin_length):
+        if (state > 0) and (state < state_bin_length - 1):
 
             return step_state_middle()
 
@@ -299,7 +321,7 @@ def main():
 
             return step_state_zero()
 
-        elif state == state_bin_length:
+        elif state == state_bin_length - 1:
 
             return step_state_max()
 
@@ -324,6 +346,9 @@ def main():
         state_action_counter = np.zeros([state_bin_length, 3])
         state_counter = np.zeros(state_bin_length)
 
+        # todo what does this policy mean???
+
+        print('working on policy')
         for m in range(MAXIMUM_NUMBER_OF_POLICY_EPISODES):
 
             eligibility_traces = np.zeros([state_bin_length, 3])
@@ -336,7 +361,7 @@ def main():
 
             # todo add maximum length for policy here. May never reach a terminal state
             while (not terminal_state) and (counter < MAXIMUM_POLICY_ITERATIONS):
-
+                # print('current policy counter', counter)
                 counter += 1
                 state_counter[state] += 1
 
@@ -387,16 +412,9 @@ def main():
         #                    [1, 1, 1, 1, 1, 1, 1],
         #                    [1, 1, 1, 1, 1, 1, 1]])
 
-        policy = np.ones(number_of_states)
+        policy = np.random.randint(0, 3, number_of_states)
 
         return policy
-
-    with open('details.txt', 'r') as f:
-        details = f.readlines()
-
-    state_bin_maximum = int(details[0])
-    state_bin_step_size = int(details[1])
-    state_bin_length = len(range(0, state_bin_maximum + state_bin_step_size, state_bin_step_size))
 
     def create_real_episodes():
         """
@@ -437,7 +455,24 @@ def main():
 
         return np.random.randint(min(real_episode_lengths), max(real_episode_lengths) + 1)
 
+    with open('details.txt', 'r') as f:
+        details = f.readlines()
+
+    state_bin_maximum = int(details[0])
+    state_bin_step_size = int(details[1])
+    state_bin_length = len(range(0, state_bin_maximum + state_bin_step_size, state_bin_step_size))
+
     real_episodes, real_episode_lengths = create_real_episodes()
+    real_episodes = [real_episodes[6]]
+    real_episode_lengths = [real_episode_lengths[6]]
+    # import matplotlib.pyplot as plt
+    # for episode in real_episodes[:100]:
+    #     states = episode[::2]
+    #     plt.plot(states)
+    # plt.ylabel('State')
+    # plt.xlabel('Index in Trajectory')
+    # plt.title('Discrete State Trajectories (first 100)')
+    # plt.show()
 
     random_policy = generate_initial_policy(state_bin_length)
     policies = [random_policy]
@@ -446,7 +481,7 @@ def main():
 
     while len(policies) - 1 < MAXIMUM_NUMBER_OF_POLICIES:
 
-        print('Progress:', len(policies) / MAXIMUM_NUMBER_OF_POLICIES * 100, '%')
+        # print('Progress:', len(policies) / MAXIMUM_NUMBER_OF_POLICIES * 100, '%')
 
         next_weights = np.zeros(state_bin_length)
         current_weights = np.zeros(state_bin_length)
@@ -454,6 +489,7 @@ def main():
 
         for i in range(MAXIMUM_WEIGHT_UPDATES):
 
+            print('number of weight updates', i)
             current_weights = next_weights
             gradients = calculate_gradient(current_weights, policies)
             weights_change = [LEARNING_RATE * gradient for gradient in gradients]
@@ -463,9 +499,11 @@ def main():
             next_weights = np.maximum(next_weights, -1*np.ones(len(next_weights)))
 
             step = np.linalg.norm(next_weights - current_weights)
-            print(step)
-            if step <= REQUIRED_STEP_PRECISION:
+            print('step', step)
 
+            if step <= REQUIRED_STEP_PRECISION:
+                print()
+                print('step small enough')
                 new_policy = calculate_policy(next_weights)
                 rewards.append(next_weights)
                 policies.append(new_policy)
@@ -493,7 +531,13 @@ def main():
     print()
     print('Final Reward Function')
     print()
-    print(final_reward)
+    # print(rewards)
+    for reward in rewards:
+        print(reward)
+        print()
 
+    print('True Trajectory')
+    print(real_episodes)
 
+    
 main()
