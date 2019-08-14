@@ -3,8 +3,13 @@ import os
 
 RAW_DATA_PATH = 'C:/Users/medkmin/highD-dataset-v1.0/data'           # path to raw data files
 META_DATA_PATH = 'C:/Users/medkmin/highD-dataset-v1.0/data'     # path to meta data files
-STATE_BIN_MAXIMUM = 60                                                        # maximum value for state bins
-STATE_BIN_STEP_SIZE = 3                                                         # size of each state bin
+# STATE_BIN_MAXIMUM = 30                                                      # maximum value for state bins
+# STATE_BIN_STEP_SIZE = 3                                                         # size of each state bin
+SPEED_BIN_MAXIMUM = 1000
+SPEED_BIN_STEP_SIZE = 10
+DISTANCE_BIN_MAXIMUM = 1000
+DISTANCE_BIN_STEP_SIZE = 10
+
 ACCELERATION_STEP_THRESHOLD = 0.1   # threshold used to separate actions into slow down, maintain speed, and speed up
 NO_STATE_CHANGE_THRESHOLD = 10      # number of steps in the same ttc to be considered another state in the trajectory
 
@@ -66,7 +71,7 @@ def main():
         :return:                dataframe of imported data
         """
         if is_raw_data:
-            columns_to_use = [1, 6, 8, 14, 16]
+            columns_to_use = [1, 6, 8, 12, 15, 16]
         else:
             columns_to_use = [0, 15]
 
@@ -106,7 +111,7 @@ def main():
         :param data:    raw motorway data
         :return:        boolean variable if any ttcs are both positive and less than STATE BIN MAXIMUM
         """
-        return any((data['ttc'] > 0) & (data['ttc'] < STATE_BIN_MAXIMUM))
+        return any((data['xVelocity'] > data['precedingXVelocity']) & (data['precedingXVelocity'] != 0))
 
     def calculate_vehicle_trajectory(data):
         """
@@ -136,14 +141,17 @@ def main():
         :param data:    vehicle data being considered
         :return:        list of all trajectories within vehicle data
         """
-        def get_ttc_bins():
-            """
-            Helper function to get bins for ttc states. The bins start at 0
-            with step size STATE BIN STEP SIZE and end at STATE BIN MAXIMUM.
+        def get_speed_bins():
 
-            :return:    list of ttc state bins
-            """
-            return list(range(0, STATE_BIN_MAXIMUM + STATE_BIN_STEP_SIZE, STATE_BIN_STEP_SIZE))
+            return list(range(- SPEED_BIN_MAXIMUM - SPEED_BIN_STEP_SIZE,
+                              SPEED_BIN_MAXIMUM + SPEED_BIN_STEP_SIZE,
+                              SPEED_BIN_STEP_SIZE))
+
+        def get_distance_bins():
+
+            return list(range(- DISTANCE_BIN_MAXIMUM - DISTANCE_BIN_STEP_SIZE,
+                              DISTANCE_BIN_MAXIMUM + DISTANCE_BIN_STEP_SIZE,
+                              DISTANCE_BIN_STEP_SIZE))
 
         def get_acceleration_bins():
             """
@@ -245,10 +253,28 @@ def main():
 
                 return current_trajectory
 
-            states = (pd.cut(current_data['ttc'], ttc_bins, right=False, labels=False)
-                      .dropna()
+            # todo start here
+
+            vehicle_speed_states = (pd.cut(current_data['xVelocity'], speed_bins, right=False, labels=False)
+                      #.dropna()
                       .reset_index(drop=False))
 
+            front_vehicle_speed_states = (pd.cut(current_data['precedingXVelocity'], speed_bins, right=False, labels=False)
+                      #.dropna()
+                      .reset_index(drop=False))
+
+            distance_states = (pd.cut(current_data['dhw'], distance_bins, right=False, labels=False)
+                      #.dropna()
+                      .reset_index(drop=False))
+
+            print(current_data)
+            print()
+            print(vehicle_speed_states)
+            print()
+            print(front_vehicle_speed_states)
+            print()
+            print(distance_states)
+            states = vehicle_speed_states
             actions = (pd.cut(current_data['xAcceleration'], acceleration_bins, right=False, labels=False)
                        .reset_index(drop=False))
 
@@ -356,7 +382,8 @@ def main():
 
             return all_trajectory_indexes
 
-        ttc_bins = get_ttc_bins()
+        speed_bins = get_speed_bins()
+        distance_bins = get_distance_bins()
         acceleration_bins = get_acceleration_bins()
 
         if one_continuous_trajectory(data):
@@ -416,7 +443,8 @@ def main():
 
             if has_possible_collision(vehicle_data):
 
-                following_data = vehicle_data[(vehicle_data['ttc'] > 0) & (vehicle_data['ttc'] < STATE_BIN_MAXIMUM)]
+                following_data = vehicle_data[(vehicle_data['xVelocity'] > vehicle_data['precedingXVelocity'])
+                                              & (vehicle_data['precedingXVelocity'] != 0)]
                 vehicle_trajectory, multiple_trajectories = calculate_vehicle_trajectory(following_data)
 
                 if multiple_trajectories:
@@ -433,9 +461,11 @@ def main():
         for trajectory in all_trajectories:
             f.write("%s\n" % trajectory)
 
-    with open('details.txt', 'w') as f:
-        f.write("%s\n" % STATE_BIN_MAXIMUM)
-        f.write("%s\n" % STATE_BIN_STEP_SIZE)
+    # with open('details.txt', 'w') as f:
+        # f.write("%s\n" % STATE_BIN_MAXIMUM)
+        # f.write("%s\n" % STATE_BIN_STEP_SIZE)
 
+
+# todo update all ilocs to make sure the right thing is being used
 
 main()
