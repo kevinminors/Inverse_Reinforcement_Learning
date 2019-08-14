@@ -19,9 +19,9 @@ MAXIMUM_POLICY_ITERATIONS = 1000
 LAMBDA = 0.9
 EPSILON_RATIO_VALUE = 1000
 
-AVOID_COLLISION_REWARD = 1
-COLLISION_PENALTY = -1
-TOO_SLOW_PENALTY = -1
+AVOID_COLLISION_REWARD = 0
+COLLISION_PENALTY = 0
+TOO_SLOW_PENALTY = 0
 
 RANDOM_STATE_CHANGE_PROBABILITY = 0.7
 
@@ -242,7 +242,7 @@ def main():
         gradient = np.zeros(state_bin_length)
 
         for j in range(state_bin_length):
-            print('gradient entry', j, 'being calculated')
+            # print('gradient entry', j, 'being calculated')
             weight_gradient = [calculate_p_gradient(policy) * calculate_value_function_difference(j, policy)
                                for policy in current_policies]
             gradient[j] = (sum(weight_gradient))
@@ -348,7 +348,7 @@ def main():
 
         # todo what does this policy mean???
 
-        print('working on policy')
+        # print('working on policy')
         for m in range(MAXIMUM_NUMBER_OF_POLICY_EPISODES):
 
             eligibility_traces = np.zeros([state_bin_length, 3])
@@ -393,6 +393,10 @@ def main():
                 action = new_action
 
                 new_state, reward, terminal_state = step_model(state, action, weights)
+
+        print()
+        print('policy calculated')
+        print(policy)
 
         return policy
 
@@ -463,8 +467,13 @@ def main():
     state_bin_length = len(range(0, state_bin_maximum + state_bin_step_size, state_bin_step_size))
 
     real_episodes, real_episode_lengths = create_real_episodes()
-    real_episodes = [real_episodes[6]]
-    real_episode_lengths = [real_episode_lengths[6]]
+    real_episodes = [real_episodes[5]]
+    real_episode_lengths = [real_episode_lengths[5]]
+
+    print()
+    print('real episode')
+    print(real_episodes[0])
+
     # import matplotlib.pyplot as plt
     # for episode in real_episodes[:100]:
     #     states = episode[::2]
@@ -489,7 +498,7 @@ def main():
 
         for i in range(MAXIMUM_WEIGHT_UPDATES):
 
-            print('number of weight updates', i)
+            # print('number of weight updates', i)
             current_weights = next_weights
             gradients = calculate_gradient(current_weights, policies)
             weights_change = [LEARNING_RATE * gradient for gradient in gradients]
@@ -499,11 +508,12 @@ def main():
             next_weights = np.maximum(next_weights, -1*np.ones(len(next_weights)))
 
             step = np.linalg.norm(next_weights - current_weights)
-            print('step', step)
+            # print('step', step)
 
             if step <= REQUIRED_STEP_PRECISION:
                 print()
-                print('step small enough')
+                print('weights')
+                print(next_weights)
                 new_policy = calculate_policy(next_weights)
                 rewards.append(next_weights)
                 policies.append(new_policy)
@@ -528,16 +538,15 @@ def main():
 
         final_reward = next_weights
 
-    print()
-    print('Final Reward Function')
-    print()
+    # print()
+    # print('Final Reward Function')
+    # print()
     # print(rewards)
+    print()
+    print('All rewards returned')
     for reward in rewards:
         print(reward)
         print()
 
-    print('True Trajectory')
-    print(real_episodes)
 
-    
 main()
