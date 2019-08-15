@@ -6,15 +6,16 @@ META_DATA_PATH = 'C:/Users/medkmin/highD-dataset-v1.0/data'     # path to meta d
 # STATE_BIN_MAXIMUM = 30                                                      # maximum value for state bins
 # STATE_BIN_STEP_SIZE = 3                                                         # size of each state bin
 SPEED_BIN_MAXIMUM = 1000
-SPEED_BIN_STEP_SIZE = 10
+SPEED_BIN_STEP_SIZE = 5
 DISTANCE_BIN_MAXIMUM = 1000
-DISTANCE_BIN_STEP_SIZE = 10
+DISTANCE_BIN_STEP_SIZE = 5
 
 ACCELERATION_STEP_THRESHOLD = 0.1   # threshold used to separate actions into slow down, maintain speed, and speed up
-NO_STATE_CHANGE_THRESHOLD = 10      # number of steps in the same ttc to be considered another state in the trajectory
+NO_STATE_CHANGE_THRESHOLD = 100      # number of steps in the same ttc to be considered another state in the trajectory
 
 
 def main():
+
     """
     From motorway data for individual vehicles, we want to calculate
     the state-action trajectories of vehicles following other
@@ -164,7 +165,8 @@ def main():
 
             :return:    bins for acceleration actions
             """
-            return [-1e99, -ACCELERATION_STEP_THRESHOLD, ACCELERATION_STEP_THRESHOLD, 1e99]
+            # return [-1e99, -ACCELERATION_STEP_THRESHOLD, ACCELERATION_STEP_THRESHOLD, 1e99]
+            return [-1e99, 0, 1e99]
 
         def one_continuous_trajectory(current_data):
             """
@@ -188,7 +190,7 @@ def main():
             :param current_data:    current vehicle data being considered
             :return:                boolean variable if there is only one unique precedingID entry
             """
-            return len(current_data.iloc[:, 4].unique()) == 1
+            return len(current_data.loc[:, 'precedingId'].unique()) == 1
 
         def get_single_trajectory(current_data):
             """
@@ -253,34 +255,38 @@ def main():
 
                 return current_trajectory
 
-            # todo start here
-
             vehicle_speed_states = (pd.cut(current_data['xVelocity'], speed_bins, right=False, labels=False)
-                      #.dropna()
-                      .reset_index(drop=False))
+                                      .dropna()
+                                      .reset_index(drop=False))
 
-            front_vehicle_speed_states = (pd.cut(current_data['precedingXVelocity'], speed_bins, right=False, labels=False)
-                      #.dropna()
-                      .reset_index(drop=False))
+            front_vehicle_speed_states = (pd.cut(current_data['precedingXVelocity'], speed_bins, right=False,
+                                                 labels=False)
+                                          .dropna()
+                                          .reset_index(drop=False))
 
             distance_states = (pd.cut(current_data['dhw'], distance_bins, right=False, labels=False)
-                      #.dropna()
-                      .reset_index(drop=False))
-
-            print(current_data)
-            print()
-            print(vehicle_speed_states)
-            print()
-            print(front_vehicle_speed_states)
-            print()
-            print(distance_states)
-            states = vehicle_speed_states
+                                 .dropna()
+                                 .reset_index(drop=False))
+            #
+            # print(current_data)
+            # print()
+            # print(vehicle_speed_states)
+            # print()
+            # print(front_vehicle_speed_states)
+            # print()
+            # print(distance_states)
+            states = list(zip(vehicle_speed_states.loc[:, 'xVelocity'],
+                              front_vehicle_speed_states.loc[:, 'precedingXVelocity'],
+                              distance_states.loc[:, 'dhw']))
             actions = (pd.cut(current_data['xAcceleration'], acceleration_bins, right=False, labels=False)
                        .reset_index(drop=False))
 
+            # print(current_data['xAcceleration'])
+            # print(actions)
+
             current_single_trajectory = list()
 
-            current_state = states.iloc[0, 1]
+            current_state = states[0]
             current_action = calculate_action(0)
 
             current_single_trajectory = append_new_state_and_action(current_single_trajectory,
@@ -288,11 +294,11 @@ def main():
 
             current_state_counter = 0
 
-            for next_state_index in range(len(states.iloc[:, 1])):
+            for next_state_index in range(len(states)):
 
-                if states.iloc[next_state_index, 1] != current_state:
+                if states[next_state_index] != current_state:
 
-                    next_state = states.iloc[next_state_index, 1]
+                    next_state = states[next_state_index]
                     next_action = calculate_action(next_state_index)
 
                     current_single_trajectory = append_new_state_and_action(current_single_trajectory,
@@ -327,12 +333,12 @@ def main():
             :param current_data:    current vehicle data being considered
             :return:                all trajectories for each car in front
             """
-            all_front_car_ids = current_data.iloc[:, 4].unique()
+            all_front_car_ids = current_data.loc[:, 'precedingId'].unique()
             all_front_car_trajectories = list()
 
             for front_car_id in all_front_car_ids:
 
-                data_with_current_front_car = current_data[current_data.iloc[:, 4] == front_car_id]
+                data_with_current_front_car = current_data[current_data.loc[:, 'precedingId'] == front_car_id]
                 trajectory_with_current_front_car = get_single_trajectory(data_with_current_front_car)
                 all_front_car_trajectories.append(trajectory_with_current_front_car)
 
@@ -452,6 +458,13 @@ def main():
                 else:
                     all_trajectories.append(vehicle_trajectory)
 
+                # print()
+                # print('Real data')
+                # print(following_data)
+                # print()
+                # print('Trajectories')
+                # print(vehicle_trajectory)
+
     with pd.option_context('display.max_rows', None, 'display.max_columns', None):
         print()
         print('all trajectories')
@@ -461,11 +474,11 @@ def main():
         for trajectory in all_trajectories:
             f.write("%s\n" % trajectory)
 
-    # with open('details.txt', 'w') as f:
-        # f.write("%s\n" % STATE_BIN_MAXIMUM)
-        # f.write("%s\n" % STATE_BIN_STEP_SIZE)
+    with open('details.txt', 'w') as f:
+        f.write("%s\n" % SPEED_BIN_STEP_SIZE)
+        f.write("%s\n" % SPEED_BIN_MAXIMUM)
+        f.write("%s\n" % DISTANCE_BIN_STEP_SIZE)
+        f.write("%s\n" % DISTANCE_BIN_MAXIMUM)
 
-
-# todo update all ilocs to make sure the right thing is being used
-
+# todo do we need more action options other than just speed up and slow down
 main()
