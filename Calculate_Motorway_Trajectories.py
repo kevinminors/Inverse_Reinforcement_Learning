@@ -154,20 +154,6 @@ def main():
                               DISTANCE_BIN_MAXIMUM + DISTANCE_BIN_STEP_SIZE,
                               DISTANCE_BIN_STEP_SIZE))
 
-        def get_acceleration_bins():
-            """
-            Helper function to get acceleration action bins. The actions are
-            slow down, maintain speed, and speed up. These actions are
-            determined by the acceleration. If the acceleration is less than
-            ACCELERATION STEP THRESHOLD, the vehicle is slowing down. If
-            it is greater than ACCELERATION STEP THRESHOLD, the vehilce is
-            speeding up. Otherwise, we say the vehicle is maintaining speed.
-
-            :return:    bins for acceleration actions
-            """
-            # return [-1e99, -ACCELERATION_STEP_THRESHOLD, ACCELERATION_STEP_THRESHOLD, 1e99]
-            return [-1e99, 0, 1e99]
-
         def one_continuous_trajectory(current_data):
             """
             Check if the vehicle data is one continuous trajectory. This means that
@@ -233,7 +219,7 @@ def main():
                 """
                 if current_data.iloc[state_index, 1] < 0:
 
-                    action = 2 - actions.iloc[state_index, 1]
+                    action = 1 - actions.iloc[state_index, 1]
 
                 else:
 
@@ -425,6 +411,21 @@ def main():
 
             return trajectories, True
 
+    def get_acceleration_bins():
+        """
+        Helper function to get acceleration action bins. The actions are
+        slow down, maintain speed, and speed up. These actions are
+        determined by the acceleration. If the acceleration is less than
+        ACCELERATION STEP THRESHOLD, the vehicle is slowing down. If
+        it is greater than ACCELERATION STEP THRESHOLD, the vehilce is
+        speeding up. Otherwise, we say the vehicle is maintaining speed.
+
+        :return:    bins for acceleration actions
+        """
+        # todo could also try binning acceleration to get different change speed actions
+        # return [-1e99, -ACCELERATION_STEP_THRESHOLD, ACCELERATION_STEP_THRESHOLD, 1e99]
+        return [-1e99, 0, 1e99]
+
     all_raw_data_file_names = get_file_names_from_path(RAW_DATA_PATH, is_raw_data=True)
     all_meta_data_file_names = get_file_names_from_path(META_DATA_PATH, is_raw_data=False)
 
@@ -475,10 +476,15 @@ def main():
             f.write("%s\n" % trajectory)
 
     with open('details.txt', 'w') as f:
+        f.write("%s\n" % str(len(get_acceleration_bins()) - 1))
+        f.write("%s\n" % len(all_trajectories[0][0]))
+        f.write("%s\n" % SPEED_BIN_STEP_SIZE)
+        f.write("%s\n" % SPEED_BIN_MAXIMUM)
         f.write("%s\n" % SPEED_BIN_STEP_SIZE)
         f.write("%s\n" % SPEED_BIN_MAXIMUM)
         f.write("%s\n" % DISTANCE_BIN_STEP_SIZE)
         f.write("%s\n" % DISTANCE_BIN_MAXIMUM)
+
 
 # todo do we need more action options other than just speed up and slow down
 main()
