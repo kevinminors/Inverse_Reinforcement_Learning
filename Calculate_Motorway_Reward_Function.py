@@ -2,7 +2,7 @@ import numpy as np
 np.set_printoptions(linewidth=np.nan)
 
 LEARNING_RATE = 0.1
-MAXIMUM_WEIGHT_UPDATES = 50
+MAXIMUM_WEIGHT_UPDATES = 2
 MAXIMUM_NUMBER_OF_POLICIES = 10
 REQUIRED_STEP_PRECISION = 0.001
 
@@ -81,7 +81,7 @@ def main():
             :param feature_vector_number:   index for the 1 in the vector
             :return:                        feature vector with 1 in that index
             """
-            feature_vector = np.zeros(state_dimensions)
+            feature_vector = np.zeros(state_sizes)
             feature_vector[feature_vector_number] = 1
 
             return feature_vector
@@ -95,7 +95,7 @@ def main():
             """
             def terminal_state(state, current_episode):
                 # todo debug this code to make sure it works correctly
-                if state == np.zeros(len(state_dimensions)):
+                if np.array_equal(state, np.zeros(len(state_sizes))):
 
                     return True
 
@@ -103,11 +103,11 @@ def main():
 
                     return True
 
-                elif any([state == state_maximums - np.ones(len(state_dimensions))]):
+                elif np.array_equal(state, state_maximums - np.ones(state_dimensions)):
 
                     return True
 
-            current_state = [np.random.randint(state_maximum) for state_maximum in state_maximums]
+            current_state = (np.random.randint(state_size) for state_size in state_sizes)
             current_action = current_policy[current_state]
             episode = [current_state, current_action]
             max_episode_length = generate_max_episode_length()
@@ -210,9 +210,9 @@ def main():
             :param current_policy:      Policy used to compare against expert episodes
             :return:                    Value of p' in gradient calculation
             """
-            sum_product = np.zeros(state_dimensions)
+            sum_product = np.zeros(state_sizes)
 
-            # for feature_vector_number in range(state_dimensions):
+            # for feature_vector_number in range(state_sizes):
             for vector_number1 in range(state_maximums[0]):
                 for vector_number2 in range(state_maximums[1]):
                     for vector_number3 in range(state_maximums[2]):
@@ -260,18 +260,28 @@ def main():
 
             return perfect_policy_weight_value - policy_weight_value
 
-        gradient = np.zeros(state_dimensions)
+        def increment_state_index(current_index):
 
-        # for j in range(state_dimensions):
-        for vector_number1 in range(state_maximums[0]):
-            for vector_number2 in range(state_maximums[1]):
-                for vector_number3 in range(state_maximums[2]):
+            current_index[-1] += 1
 
-                    j = [vector_number1, vector_number2, vector_number3]
-                    # print('gradient entry', j, 'being calculated')
-                    weight_gradient = [calculate_p_gradient(policy) * calculate_value_function_difference(j, policy)
-                                       for policy in current_policies]
-                    gradient[j] = (sum(weight_gradient))
+            for pp in range(state_dimensions - 1, 0, -1):
+
+                if current_index[pp] == state_maximums[pp]:
+
+                    current_index[pp] = 0
+                    current_index[pp - 1] += 1
+
+            return current_index
+
+        gradient = np.zeros(state_sizes)
+        state_index = np.zeros(state_dimensions)
+
+        while state_index[0] != state_maximums[0]:
+
+            weight_gradient = [calculate_p_gradient(policy) * calculate_value_function_difference(state_index, policy)
+                               for policy in current_policies]
+            gradient[state_index] = (sum(weight_gradient))
+            state_index = increment_state_index(state_index)
 
         return gradient
 
@@ -339,7 +349,7 @@ def main():
 
                 return state - 1, weights[state], False
 
-        if (state > 0) and (state < state_dimensions - 1):
+        if (state > 0) and (state < state_sizes - 1):
 
             return step_state_middle()
 
@@ -347,7 +357,7 @@ def main():
 
             return step_state_zero()
 
-        elif state == state_dimensions - 1:
+        elif state == state_sizes - 1:
 
             return step_state_max()
 
@@ -367,19 +377,19 @@ def main():
         :return:            policy that maps states to actions in a way that maximises
                             the total reward received
         """
-        policy = np.random.randint(0, 3, state_dimensions)
-        action_value_function = np.zeros([state_dimensions, 3])
-        state_action_counter = np.zeros([state_dimensions, 3])
-        state_counter = np.zeros(state_dimensions)
+        policy = np.random.randint(0, 3, state_sizes)
+        action_value_function = np.zeros([state_sizes, 3])
+        state_action_counter = np.zeros([state_sizes, 3])
+        state_counter = np.zeros(state_sizes)
 
         # todo what does this policy mean???
 
         # print('working on policy')
         for m in range(MAXIMUM_NUMBER_OF_POLICY_EPISODES):
 
-            eligibility_traces = np.zeros([state_dimensions, 3])
+            eligibility_traces = np.zeros([state_sizes, 3])
 
-            state = np.random.randint(0, state_dimensions)
+            state = np.random.randint(0, state_sizes)
             action = policy[state]
 
             new_state, reward, terminal_state = step_model(state, action, weights)
@@ -442,7 +452,7 @@ def main():
         #                    [1, 1, 1, 1, 1, 1, 1],
         #                    [1, 1, 1, 1, 1, 1, 1]])
 
-        policy = np.random.randint(0, number_of_actions + 1, state_dimensions)
+        policy = np.random.randint(0, number_of_actions, state_sizes)
 
         return policy
 
@@ -477,10 +487,7 @@ def main():
         with open('trajectories.txt', 'r') as g:
             for line in g:
                 trajectories.append(eval(line))
-                trajectory_lengths.append(len(eval(line)))
-
-        trajectories = [trajectories[5]]
-        trajectory_lengths = [trajectory_lengths[5]]
+                trajectory_lengths.append(len(eval(line))//2)
 
         return trajectories, trajectory_lengths
 
@@ -495,25 +502,31 @@ def main():
 
         actions = int(details[0])
         number_of_dimensions = int(details[1])
-        dimensions = np.zeros(number_of_dimensions)
-        step_size = np.zeros(number_of_dimensions)
-        maximum = np.zeros(number_of_dimensions)
+        sizes = np.zeros(number_of_dimensions).astype(int)
+        step_size = np.zeros(number_of_dimensions).astype(int)
+        maximum = np.zeros(number_of_dimensions).astype(int)
 
         for j in range(number_of_dimensions):
 
             step_size[j] = int(details[2*j + 2])
             maximum[j] = int(details[2*j + 3])
-            dimensions[j] = len(range(-maximum[j] - step_size[j], maximum[j] + step_size[j], step_size[j]))
+            sizes[j] = len(range(-maximum[j] - step_size[j], maximum[j] + step_size[j], step_size[j]))
 
-        return dimensions, step_size, maximum, actions
+        return number_of_dimensions, sizes, step_size, maximum, actions
 
     # todo change the code where state dimension is everywhere
-    state_dimensions, state_step_sizes, state_maximums, number_of_actions = get_details()
+    state_dimensions, state_sizes, state_step_sizes, state_maximums, number_of_actions = get_details()
     real_episodes, real_episode_lengths = create_real_episodes()
 
-    print()
-    print('real episode')
-    print(real_episodes)
+    # print()
+    # print('state details')
+    # print(state_sizes, state_step_sizes, state_maximums, number_of_actions)
+    # print()
+    # print('real episode')
+    # print(real_episodes[:20])
+    # print()
+    # print('episode lengths')
+    # print(real_episode_lengths[:20])
 
     # import matplotlib.pyplot as plt
     # for episode in real_episodes[:100]:
@@ -527,14 +540,14 @@ def main():
     random_policy = generate_initial_policy()
     policies = [random_policy]
     rewards = []
-    # final_reward = np.zeros(state_dimensions)
+    # final_reward = np.zeros(state_sizes)
 
     while len(policies) - 1 < MAXIMUM_NUMBER_OF_POLICIES:
 
         # print('Progress:', len(policies) / MAXIMUM_NUMBER_OF_POLICIES * 100, '%')
 
-        next_weights = np.zeros(state_dimensions)
-        current_weights = np.zeros(state_dimensions)
+        next_weights = np.zeros(state_sizes)
+        current_weights = np.zeros(state_sizes)
         policy_appended = False
 
         for i in range(MAXIMUM_WEIGHT_UPDATES):
@@ -542,52 +555,52 @@ def main():
             # print('number of weight updates', i)
             current_weights = next_weights
             gradients = calculate_gradient(current_weights, policies)
-            weights_change = [LEARNING_RATE * gradient for gradient in gradients]
-            next_weights = current_weights + weights_change
-
-            next_weights = np.minimum(next_weights, np.ones(len(next_weights)))
-            next_weights = np.maximum(next_weights, -1*np.ones(len(next_weights)))
-
-            step = np.linalg.norm(next_weights - current_weights)
-            # print('step', step)
-
-            if step <= REQUIRED_STEP_PRECISION:
-                print()
-                print('weights')
-                print(next_weights)
-                new_policy = calculate_policy(next_weights)
-                rewards.append(next_weights)
-                policies.append(new_policy)
-                policy_appended = True
-                break
-
-        if not policy_appended:
-
-            probability = np.random.rand()
-
-            if probability >= 0.5:
-
-                new_policy = calculate_policy(next_weights)
-                rewards.append(next_weights)
-
-            else:
-
-                new_policy = calculate_policy(current_weights)
-                rewards.append(current_weights)
-
-            policies.append(new_policy)
-
-        # final_reward = next_weights
-
+    #         weights_change = [LEARNING_RATE * gradient for gradient in gradients]
+    #         next_weights = current_weights + weights_change
+    #
+    #         next_weights = np.minimum(next_weights, np.ones(len(next_weights)))
+    #         next_weights = np.maximum(next_weights, -1*np.ones(len(next_weights)))
+    #
+    #         step = np.linalg.norm(next_weights - current_weights)
+    #         # print('step', step)
+    #
+    #         if step <= REQUIRED_STEP_PRECISION:
+    #             print()
+    #             print('weights')
+    #             print(next_weights)
+    #             new_policy = calculate_policy(next_weights)
+    #             rewards.append(next_weights)
+    #             policies.append(new_policy)
+    #             policy_appended = True
+    #             break
+    #
+    #     if not policy_appended:
+    #
+    #         probability = np.random.rand()
+    #
+    #         if probability >= 0.5:
+    #
+    #             new_policy = calculate_policy(next_weights)
+    #             rewards.append(next_weights)
+    #
+    #         else:
+    #
+    #             new_policy = calculate_policy(current_weights)
+    #             rewards.append(current_weights)
+    #
+    #         policies.append(new_policy)
+    #
+    #     # final_reward = next_weights
+    #
+    # # print()
+    # # print('Final Reward Function')
+    # # print()
+    # # print(rewards)
     # print()
-    # print('Final Reward Function')
-    # print()
-    # print(rewards)
-    print()
-    print('All rewards returned')
-    for this_reward in rewards:
-        print(this_reward)
-        print()
+    # print('All rewards returned')
+    # for this_reward in rewards:
+    #     print(this_reward)
+    #     print()
 
 
 # todo make code independent of state size. Right now it is hardcoded for a certain state
