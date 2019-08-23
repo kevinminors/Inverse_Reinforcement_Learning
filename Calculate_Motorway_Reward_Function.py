@@ -2,14 +2,14 @@ import numpy as np
 np.set_printoptions(linewidth=np.nan)
 
 LEARNING_RATE = 0.1
-MAXIMUM_WEIGHT_UPDATES = 2
-MAXIMUM_NUMBER_OF_POLICIES = 10
-REQUIRED_STEP_PRECISION = 0.001
+MAXIMUM_WEIGHT_UPDATES = 100
+MAXIMUM_NUMBER_OF_POLICIES = 1
+REQUIRED_STEP_PRECISION = 0.01
 
 REWARD_DISCOUNT_FACTOR = 1
-EXIT_BOUNDARY_REWARD = -1
-REPEAT_PREVIOUS_STATE_REWARD = -1
-TERMINAL_STATE_REWARD = 1
+# EXIT_BOUNDARY_REWARD = -1
+# REPEAT_PREVIOUS_STATE_REWARD = -1
+# TERMINAL_STATE_REWARD = 1
 
 P_FUNCTION_REWARD = 1
 P_FUNCTION_PENALTY = 2
@@ -23,7 +23,7 @@ EPSILON_RATIO_VALUE = 1000
 # COLLISION_PENALTY = 0
 # TOO_SLOW_PENALTY = 0
 
-RANDOM_STATE_CHANGE_PROBABILITY = 0.7
+# RANDOM_STATE_CHANGE_PROBABILITY = 0.7
 
 
 def main():
@@ -223,7 +223,7 @@ def main():
             feature_vector_index = tuple(np.zeros(state_dimensions).astype(int))
 
             while feature_vector_index[0] != state_sizes[0]:
-
+                # print('p gradient', feature_vector_index)
                 feature_vector = get_feature_vector(feature_vector_index)
                 perfect_policy_weight_value = calculate_reward(real_episodes, feature_vector)
 
@@ -288,6 +288,7 @@ def main():
 
         while state_index[0] != state_sizes[0]:
 
+            # print('gradient', state_index)
             weight_gradient = [calculate_p_gradient(policy) * calculate_value_function_difference(state_index, policy)
                                for policy in current_policies]
             gradient[state_index] = (sum(weight_gradient))
@@ -321,11 +322,11 @@ def main():
 
             if action == 0:
 
-                current_state += [-1, 0, 0]
+                current_state = tuple(map(sum, zip(current_state, (-1, 0, 0))))
 
             elif action == 1:
 
-                current_state += [1, 0, 0]
+                current_state = tuple(map(sum, zip(current_state, (1, 0, 0))))
 
             return tuple(current_state), weights[current_state], False
 
@@ -337,7 +338,7 @@ def main():
 
             elif action == 1:
 
-                current_state += [1, 0, 0]
+                current_state = tuple(map(sum, zip(current_state, (1, 0, 0))))
 
             return tuple(current_state), weights[current_state], False
 
@@ -345,7 +346,7 @@ def main():
 
             if action == 0:
 
-                current_state += [-1, 0, 0]
+                current_state = tuple(map(sum, zip(current_state, (-1, 0, 0))))
 
             elif action == 1:
 
@@ -385,16 +386,17 @@ def main():
                             the total reward received
         """
         policy = np.random.randint(0, number_of_actions, state_sizes)
-        action_value_function = np.zeros([state_sizes, number_of_actions])
-        state_action_counter = np.zeros([state_sizes, number_of_actions])
-        state_counter = np.zeros(state_sizes)
+
+        action_value_function = np.zeros(tuple(np.append(state_sizes, number_of_actions).astype(int)))
+        state_action_counter = np.zeros(tuple(np.append(state_sizes, number_of_actions).astype(int)))
+        state_counter = np.zeros(tuple(state_sizes.astype(int)))
 
         # todo what does this policy mean???
 
         # print('working on policy')
         for m in range(MAXIMUM_NUMBER_OF_POLICY_EPISODES):
 
-            eligibility_traces = np.zeros([state_sizes, number_of_actions])
+            eligibility_traces = np.zeros(tuple(np.append(state_sizes, number_of_actions).astype(int)))
 
             state = tuple(np.random.randint(state_size) for state_size in state_sizes)
             action = policy[state]
@@ -407,8 +409,9 @@ def main():
                 # print('current policy counter', counter)
                 counter += 1
                 state_counter[state] += 1
-
-                state_action_pair = state, action
+                print(state, action)
+                
+                state_action_pair = state + tuple([action])
                 state_action_counter[state_action_pair] += 1
 
                 epsilon = EPSILON_RATIO_VALUE / (state_counter[state] + EPSILON_RATIO_VALUE)
@@ -423,7 +426,7 @@ def main():
                     policy[new_state] = np.argmax(action_value_function[new_state, :])
 
                 new_action = policy[new_state]
-                delta = (reward + action_value_function[new_state, new_action]
+                delta = (reward + action_value_function[new_state + tuple[new_action]]
                          - action_value_function[state_action_pair])
 
                 eligibility_traces[state_action_pair] += 1
@@ -529,11 +532,11 @@ def main():
     print(state_sizes, state_step_sizes, state_maximums, number_of_actions)
     print()
     print('real episode')
-    real_episodes = [real_episodes[5]]
+    real_episodes = [real_episodes[47]]
     print(real_episodes)
     print()
     print('episode lengths')
-    real_episode_lengths = [real_episode_lengths[5]]
+    real_episode_lengths = [real_episode_lengths[47]]
     print(real_episode_lengths)
 
     # import matplotlib.pyplot as plt
@@ -570,7 +573,7 @@ def main():
             next_weights = np.maximum(next_weights, -1*np.ones(len(next_weights)))
 
             step = np.linalg.norm(next_weights - current_weights)
-            # print('step', step)
+            print('step', step)
 
             if step <= REQUIRED_STEP_PRECISION:
                 print()
@@ -616,4 +619,5 @@ def main():
 # todo change the code where state dimension is everywhere
 # todo think about logic of code and try to make it as efficient as possible
 # todo remove state maximum everywhere and use state sizes
+# todo look into parallel computing for gradient calculations
 main()

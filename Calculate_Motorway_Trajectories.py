@@ -6,9 +6,9 @@ META_DATA_PATH = 'C:/Users/medkmin/highD-dataset-v1.0/data'     # path to meta d
 # STATE_BIN_MAXIMUM = 30                                                      # maximum value for state bins
 # STATE_BIN_STEP_SIZE = 3                                                         # size of each state bin
 SPEED_BIN_MAXIMUM = 100
-SPEED_BIN_STEP_SIZE = 5
+SPEED_BIN_STEP_SIZE = 20
 DISTANCE_BIN_MAXIMUM = 420
-DISTANCE_BIN_STEP_SIZE = 21
+DISTANCE_BIN_STEP_SIZE = 84
 
 ACCELERATION_STEP_THRESHOLD = 0.1   # threshold used to separate actions into slow down, maintain speed, and speed up
 NO_STATE_CHANGE_THRESHOLD = 100      # number of steps in the same ttc to be considered another state in the trajectory
