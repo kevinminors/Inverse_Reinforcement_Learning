@@ -409,8 +409,12 @@ def main():
                 # print('current policy counter', counter)
                 counter += 1
                 state_counter[state] += 1
+                print('state and action')
                 print(state, action)
-                
+                print()
+                print('policy')
+                print(policy)
+
                 state_action_pair = state + tuple([action])
                 state_action_counter[state_action_pair] += 1
 
@@ -426,7 +430,24 @@ def main():
                     policy[new_state] = np.argmax(action_value_function[new_state, :])
 
                 new_action = policy[new_state]
-                delta = (reward + action_value_function[new_state + tuple[new_action]]
+                print('new state')
+                print(new_state)
+                print('new action')
+                print(new_action)
+                print('state action pair')
+                print(state_action_pair)
+                print('action value function')
+                print(action_value_function)
+
+                for value in state_action_pair:
+                    if value > 50:
+                        print('error 1')
+
+                for value in new_state + tuple([new_action]):
+                    if value > 50:
+                        print('error 2')
+
+                delta = (reward + action_value_function[new_state + tuple([new_action])]
                          - action_value_function[state_action_pair])
 
                 eligibility_traces[state_action_pair] += 1
@@ -620,4 +641,5 @@ def main():
 # todo think about logic of code and try to make it as efficient as possible
 # todo remove state maximum everywhere and use state sizes
 # todo look into parallel computing for gradient calculations
+# todo run on ARC
 main()
