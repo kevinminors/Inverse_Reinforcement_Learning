@@ -409,11 +409,11 @@ def main():
                 # print('current policy counter', counter)
                 counter += 1
                 state_counter[state] += 1
-                print('state and action')
-                print(state, action)
-                print()
-                print('policy')
-                print(policy)
+                # print('state and action')
+                # print(state, action)
+                # print()
+                # print('policy')
+                # print(policy)
 
                 state_action_pair = state + tuple([action])
                 state_action_counter[state_action_pair] += 1
@@ -426,18 +426,18 @@ def main():
                     policy[new_state] = np.random.randint(0, number_of_actions)
 
                 else:
-
-                    policy[new_state] = np.argmax(action_value_function[new_state, :])
+                    # todo figure out how to do this independent of state size
+                    policy[new_state] = np.argmax(action_value_function[new_state[0], new_state[1], new_state[2], :])
 
                 new_action = policy[new_state]
-                print('new state')
-                print(new_state)
-                print('new action')
-                print(new_action)
-                print('state action pair')
-                print(state_action_pair)
-                print('action value function')
-                print(action_value_function)
+                # print('new state')
+                # print(new_state)
+                # print('new action')
+                # print(new_action)
+                # print('state action pair')
+                # print(state_action_pair)
+                # print('action value function')
+                # print(action_value_function)
 
                 for value in state_action_pair:
                     if value > 50:
