@@ -288,7 +288,7 @@ def main():
 
         while state_index[0] != state_sizes[0]:
 
-            # print('gradient', state_index)
+            print('gradient', state_index)
             weight_gradient = [calculate_p_gradient(policy) * calculate_value_function_difference(state_index, policy)
                                for policy in current_policies]
             gradient[state_index] = (sum(weight_gradient))
@@ -406,7 +406,7 @@ def main():
 
             # todo add maximum length for policy here. May never reach a terminal state
             while (not terminal_state) and (counter < MAXIMUM_POLICY_ITERATIONS):
-                # print('current policy counter', counter)
+                print('current policy counter', counter)
                 counter += 1
                 state_counter[state] += 1
                 # print('state and action')
@@ -553,11 +553,11 @@ def main():
     print(state_sizes, state_step_sizes, state_maximums, number_of_actions)
     print()
     print('real episode')
-    real_episodes = [real_episodes[47]]
+    # real_episodes = [real_episodes[47]]
     print(real_episodes)
     print()
     print('episode lengths')
-    real_episode_lengths = [real_episode_lengths[47]]
+    # real_episode_lengths = [real_episode_lengths[47]]
     print(real_episode_lengths)
 
     # import matplotlib.pyplot as plt
@@ -576,7 +576,7 @@ def main():
 
     while len(policies) - 1 < MAXIMUM_NUMBER_OF_POLICIES:
 
-        # print('Progress:', len(policies) / MAXIMUM_NUMBER_OF_POLICIES * 100, '%')
+        print('Progress:', len(policies) / MAXIMUM_NUMBER_OF_POLICIES * 100, '%')
 
         next_weights = np.zeros(state_sizes)
         current_weights = np.zeros(state_sizes)
@@ -584,7 +584,7 @@ def main():
 
         for i in range(MAXIMUM_WEIGHT_UPDATES):
 
-            # print('number of weight updates', i)
+            print('number of weight updates', i)
             current_weights = next_weights
             gradients = calculate_gradient(current_weights, policies)
             weights_change = [LEARNING_RATE * gradient for gradient in gradients]
@@ -630,9 +630,14 @@ def main():
     # print(rewards)
     print()
     print('All rewards returned')
-    for this_reward in rewards:
-        print(this_reward)
-        print()
+    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+        for this_reward in rewards:
+            print(this_reward)
+            print()
+
+    with open('reward_function.txt', 'w') as f:
+        for this_reward in rewards:
+            f.write("%s\n" % this_reward)
 
 
 # todo add print statements everywhere to see what is actually going on
